@@ -32,3 +32,7 @@ export const withTransaction = async (handler) => {
     connection.release();
   }
 };
+
+export const closePool = async () => {
+  await pool.end();
+};

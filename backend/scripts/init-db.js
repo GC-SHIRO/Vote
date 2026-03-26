@@ -1,6 +1,7 @@
 import mysql from "mysql2/promise";
 import { config } from "../src/config.js";
 import { ensureSchemaAndSeed } from "../src/bootstrap.js";
+import { closePool } from "../src/db.js";
 
 const run = async () => {
   const adminConnection = await mysql.createConnection({
@@ -10,13 +11,20 @@ const run = async () => {
     password: config.db.password
   });
 
-  await adminConnection.query(
-    `CREATE DATABASE IF NOT EXISTS \`${config.db.database}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`
-  );
-  await adminConnection.end();
+  try {
+    await adminConnection.query(
+      `CREATE DATABASE IF NOT EXISTS \`${config.db.database}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`
+    );
+  } finally {
+    await adminConnection.end();
+  }
 
-  await ensureSchemaAndSeed();
-  console.log("数据库初始化完成");
+  try {
+    await ensureSchemaAndSeed();
+    console.log("数据库初始化完成");
+  } finally {
+    await closePool();
+  }
 };
 
 run().catch((error) => {
