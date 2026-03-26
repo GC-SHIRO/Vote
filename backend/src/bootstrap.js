@@ -222,7 +222,8 @@ export const ensureSchemaAndSeed = async () => {
       if (
         error?.code !== "ER_CANT_DROP_FIELD_OR_KEY" &&
         error?.code !== "ER_DUP_KEYNAME" &&
-        error?.code !== "ER_DUP_ENTRY"
+        error?.code !== "ER_DUP_ENTRY" &&
+        error?.code !== "ER_DUP_FIELDNAME"
       ) {
         throw error;
       }
