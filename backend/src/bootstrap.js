@@ -55,13 +55,32 @@ const schemaStatements = [
 
 const migrationStatements = [
   `ALTER TABLE vote_record MODIFY COLUMN voter_token VARCHAR(128) NOT NULL`,
-  `CREATE UNIQUE INDEX IF NOT EXISTS uniq_event_voter_candidate ON vote_record (event_id, voter_token, candidate_id)`,
   `ALTER TABLE vote_record DROP INDEX uniq_event_phone`,
   `ALTER TABLE vote_record DROP INDEX idx_event_phone`,
   `ALTER TABLE vote_record DROP COLUMN phone_number`,
   `ALTER TABLE vote_record DROP INDEX uniq_event_voter`,
   `ALTER TABLE vote_candidate ADD COLUMN major_name VARCHAR(64) NULL AFTER academy`
 ];
+
+const ensureUniqueIndex = async (tableName, indexName, columns) => {
+  const rows = await query(
+    `
+    SELECT 1
+    FROM information_schema.statistics
+    WHERE table_schema = DATABASE()
+      AND table_name = ?
+      AND index_name = ?
+    LIMIT 1
+    `,
+    [tableName, indexName]
+  );
+
+  if (rows.length > 0) {
+    return;
+  }
+
+  await query(`CREATE UNIQUE INDEX ${indexName} ON ${tableName} (${columns.join(", ")})`);
+};
 
 const seedCandidates = [
   {
@@ -160,7 +179,7 @@ const ensureCandidates = async (eventId) => {
         avatar_url,
         display_order,
         status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, 'active')
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active')
       ON DUPLICATE KEY UPDATE
         candidate_name = VALUES(candidate_name),
         academy = VALUES(academy),
@@ -189,6 +208,12 @@ export const ensureSchemaAndSeed = async () => {
   for (const statement of schemaStatements) {
     await query(statement);
   }
+
+  await ensureUniqueIndex("vote_record", "uniq_event_voter_candidate", [
+    "event_id",
+    "voter_token",
+    "candidate_id"
+  ]);
 
   for (const statement of migrationStatements) {
     try {
