@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+backend/node_modules/
+
+# Build outputs
+dist/
+backend/dist/
+coverage/
+*.tsbuildinfo
+
+# Environment files
+.env
+.env.*
+!.env.example
+backend/.env
+backend/.env.*
+!backend/.env.example
+
+# Runtime data
+backend/uploads/
+uploads/
+logs/
+backend/logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Python virtual env (local tooling)
+.venv/
+venv/
+
