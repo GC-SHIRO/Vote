@@ -19,6 +19,53 @@ const mockDelay = (ms: number) =>
 
 let fingerprintAgentPromise: ReturnType<typeof FingerprintJS.load> | null = null;
 
+const readLocalStorage = (key: string) => {
+  try {
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+};
+
+const writeLocalStorage = (key: string, value: string) => {
+  try {
+    window.localStorage.setItem(key, value);
+  } catch {
+    // Keep voting flow available even when storage is not writable.
+  }
+};
+
+const generateClientId = () => {
+  if (typeof crypto !== "undefined") {
+    if (typeof crypto.randomUUID === "function") {
+      return crypto.randomUUID();
+    }
+
+    if (typeof crypto.getRandomValues === "function") {
+      const bytes = new Uint8Array(16);
+      crypto.getRandomValues(bytes);
+      return Array.from(bytes, (value) => value.toString(16).padStart(2, "0")).join("");
+    }
+  }
+
+  return `${Date.now()}_${Math.random().toString(36).slice(2, 12)}`;
+};
+
+const withTimeout = async <T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> => {
+  let timerId = 0;
+  const timeoutPromise = new Promise<never>((_resolve, reject) => {
+    timerId = window.setTimeout(() => {
+      reject(new Error(`${label}_timeout`));
+    }, timeoutMs);
+  });
+
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } finally {
+    window.clearTimeout(timerId);
+  }
+};
+
 const getHeaders = (withJsonContentType = true) => ({
   ...(withJsonContentType ? { "Content-Type": "application/json" } : {}),
   "X-Requested-With": "campus-singer-vote-web"
@@ -68,31 +115,31 @@ const safeFetch = async <T>(path: string, init?: RequestInit, withJsonContentTyp
 
 export const createVoterToken = async () => {
   const storageKey = `vote-token:${defaultVoteSettings.eventId}`;
-  const cached = window.localStorage.getItem(storageKey);
+  const cached = readLocalStorage(storageKey);
 
   if (cached) {
     return cached;
   }
 
   if (USE_MOCK || !API_BASE_URL) {
-    const token = `mock_${crypto.randomUUID()}`;
-    window.localStorage.setItem(storageKey, token);
+    const token = `mock_${generateClientId()}`;
+    writeLocalStorage(storageKey, token);
     return token;
   }
 
   try {
     if (!fingerprintAgentPromise) {
-      fingerprintAgentPromise = FingerprintJS.load();
+      fingerprintAgentPromise = withTimeout(FingerprintJS.load(), 3000, "fp_load");
     }
 
     const agent = await fingerprintAgentPromise;
-    const result = await agent.get();
+    const result = await withTimeout(agent.get(), 3000, "fp_get");
     const token = `fp_${result.visitorId}`;
-    window.localStorage.setItem(storageKey, token);
+    writeLocalStorage(storageKey, token);
     return token;
   } catch {
-    const fallbackToken = `fp_fallback_${crypto.randomUUID()}`;
-    window.localStorage.setItem(storageKey, fallbackToken);
+    const fallbackToken = `fp_fallback_${generateClientId()}`;
+    writeLocalStorage(storageKey, fallbackToken);
     return fallbackToken;
   }
 };

@@ -25,6 +25,13 @@ VITE_API_BASE_URL=http://localhost:8080
 VITE_USE_MOCK=false
 ```
 
+无域名部署（ECS 公网 IP）示例：
+
+```env
+VITE_API_BASE_URL=http://1.2.3.4
+VITE_USE_MOCK=false
+```
+
 ## 4. 页面入口
 
 - 投票页：`/`

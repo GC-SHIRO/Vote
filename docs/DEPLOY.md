@@ -4,7 +4,7 @@
 
 ## 1. 目标架构
 
-- Nginx：80/443 对外入口
+- Nginx：80 对外入口（无域名场景）
 - 前端：Vite 构建后的静态文件，由 Nginx 托管
 - 后端：Node.js 进程，由 PM2 托管
 - 数据库：MySQL 8
@@ -18,7 +18,6 @@
 4. 安全组至少放行端口：
    - 22（SSH，仅办公 IP 白名单）
    - 80（HTTP）
-   - 443（HTTPS）
 5. 记录公网 IP，例如 1.2.3.4。
 
 ## 3. 首次登录与基础初始化
@@ -61,7 +60,6 @@ sudo apt install -y git curl wget unzip ufw build-essential
 ```bash
 sudo ufw allow OpenSSH
 sudo ufw allow 80
-sudo ufw allow 443
 sudo ufw --force enable
 sudo ufw status
 ```
@@ -170,10 +168,12 @@ REDIS_PORT=6379
 REDIS_PASSWORD=
 REDIS_DB=0
 
-ALLOWED_ORIGINS=https://你的域名
+ALLOWED_ORIGINS=http://1.2.3.4
 EVENT_CODE=campus-singer-2026-final
 VOTE_DEDUP_TTL_SECONDS=777600
 ```
+
+说明：`1.2.3.4` 请替换为 ECS 公网 IP。
 
 ### 5.4 初始化数据库
 
@@ -222,9 +222,11 @@ cp .env.example .env
 编辑 .env：
 
 ```env
-VITE_API_BASE_URL=https://你的域名
+VITE_API_BASE_URL=http://1.2.3.4
 VITE_USE_MOCK=false
 ```
+
+说明：`1.2.3.4` 请替换为 ECS 公网 IP。
 
 构建：
 
@@ -252,7 +254,7 @@ sudo nano /etc/nginx/sites-available/vote.conf
 ```nginx
 server {
 	listen 80;
-	server_name 你的域名;
+	server_name _;
 
 	root /var/www/vote;
 	index index.html;
@@ -293,32 +295,14 @@ sudo nginx -t
 sudo systemctl reload nginx
 ```
 
-## 8. 绑定域名与 HTTPS
+## 8. 无域名部署注意事项
 
-### 8.1 域名解析
-
-在域名服务商处添加 A 记录：
-
-- 主机记录：@ 或 www
-- 记录值：ECS 公网 IP
-
-### 8.2 安装证书工具
-
-```bash
-sudo apt install -y certbot python3-certbot-nginx
-```
-
-### 8.3 自动申请并配置 HTTPS
-
-```bash
-sudo certbot --nginx -d 你的域名
-```
-
-按提示选择跳转到 HTTPS。完成后验证自动续期：
-
-```bash
-sudo certbot renew --dry-run
-```
+1. 统一通过 `http://ECS公网IP` 访问前端页面。
+2. 前后端环境变量都使用同一个公网 IP：
+	- 后端 `ALLOWED_ORIGINS=http://ECS公网IP`
+	- 前端 `VITE_API_BASE_URL=http://ECS公网IP`
+3. Nginx 使用 `server_name _;`，不依赖域名解析。
+4. 线上建议先在安全组限制来源 IP，再逐步开放。
 
 ## 9. 上线验收（按顺序）
 
@@ -381,7 +365,7 @@ sudo systemctl reload nginx
 
 ### 12.1 前端页面打开但请求失败
 
-- 检查前端 .env 中 VITE_API_BASE_URL 是否为线上域名。
+- 检查前端 .env 中 VITE_API_BASE_URL 是否为 ECS 公网 IP。
 - 检查 Nginx /api/ 代理是否生效。
 - 检查后端 pm2 进程是否在线。
 
@@ -397,8 +381,8 @@ sudo systemctl reload nginx
 - 检查 MySQL 用户授权 host 是否为 127.0.0.1。
 - 查看 PM2 日志确认具体报错。
 
-### 12.4 HTTPS 不生效
+### 12.4 公网 IP 无法访问
 
-- 确认域名已正确解析到 ECS。
-- 检查 80/443 端口是否已放行。
-- 重新执行 certbot 并查看报错。
+- 确认安全组已放行 80 端口。
+- 检查 Nginx 是否启动并已加载 `vote.conf`。
+- 在服务器上执行 `curl http://127.0.0.1:8080/healthz`，确认后端可用。
