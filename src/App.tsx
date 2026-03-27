@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { createVoterToken, fetchEventConfig, fetchResults, submitVote } from "./api";
+import { createVoterToken, fetchEventConfig, fetchResults, RUNTIME_EVENT_ID, submitVote } from "./api";
 import { defaultVoteSettings } from "./data";
 import sztuLogo from "./img/log.svg";
 
@@ -29,19 +29,25 @@ const App = () => {
 
     const bootstrap = async () => {
       try {
-        const dynamicConfig = await fetchEventConfig();
-        if (!disposed) {
-          setVoteSettings(dynamicConfig);
-        }
+        const pullLatest = async () => {
+          const dynamicConfig = await fetchEventConfig(RUNTIME_EVENT_ID);
+          if (disposed) {
+            return;
+          }
 
-        if (dynamicConfig.resultVisible) {
-          await syncResults(dynamicConfig.eventId);
-          intervalId = window.setInterval(() => {
-            syncResults(dynamicConfig.eventId).catch(() => {
-              // keep silent on polling failures
-            });
-          }, 5000);
-        }
+          setVoteSettings(dynamicConfig);
+
+          if (dynamicConfig.resultVisible) {
+            await syncResults(dynamicConfig.eventId);
+          }
+        };
+
+        await pullLatest();
+        intervalId = window.setInterval(() => {
+          pullLatest().catch(() => {
+            // keep silent on polling failures
+          });
+        }, 5000);
       } catch {
         if (!disposed) {
           setMessage("配置或结果加载失败，稍后仍可正常提交投票");
@@ -58,6 +64,15 @@ const App = () => {
       }
     };
   }, []);
+
+  useEffect(() => {
+    const activeIds = new Set(voteSettings.candidates.map((candidate) => candidate.id));
+    const allowedCount = selectionMode === "single" ? 1 : maxSelections;
+    setSelectedIds((current) => {
+      const next = current.filter((id) => activeIds.has(id));
+      return next.length > allowedCount ? next.slice(0, allowedCount) : next;
+    });
+  }, [voteSettings.candidates, selectionMode, maxSelections]);
 
   const candidates = useMemo(
     () =>
@@ -186,7 +201,7 @@ const App = () => {
     setMessage("正在提交投票...");
 
     try {
-      const voterToken = await createVoterToken();
+      const voterToken = await createVoterToken(voteSettings.eventId);
       const response = await submitVote({
         eventId: voteSettings.eventId,
         voterToken,

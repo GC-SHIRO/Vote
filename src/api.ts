@@ -10,7 +10,10 @@ import type {
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.trim() ?? "";
 const USE_MOCK = (import.meta.env.VITE_USE_MOCK ?? "true") === "true";
+export const RUNTIME_EVENT_ID =
+  import.meta.env.VITE_EVENT_ID?.trim() || defaultVoteSettings.eventId;
 const ADMIN_AUTH_HEADER = `Basic ${btoa("admin:131072")}`;
+const REQUEST_TIMEOUT_MS = 10000;
 
 const mockDelay = (ms: number) =>
   new Promise((resolve) => {
@@ -89,13 +92,25 @@ const toAbsoluteMediaUrl = (url: string) => {
 };
 
 const safeFetch = async <T>(path: string, init?: RequestInit, withJsonContentType = true): Promise<T> => {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    ...init,
-    headers: {
-      ...getHeaders(withJsonContentType),
-      ...(init?.headers ?? {})
+  let response: Response;
+  try {
+    response = await withTimeout(
+      fetch(`${API_BASE_URL}${path}`, {
+        ...init,
+        headers: {
+          ...getHeaders(withJsonContentType),
+          ...(init?.headers ?? {})
+        }
+      }),
+      REQUEST_TIMEOUT_MS,
+      "request"
+    );
+  } catch (error) {
+    if (error instanceof Error && error.message === "request_timeout") {
+      throw new Error("网络超时，请稍后重试");
     }
-  });
+    throw error;
+  }
 
   if (!response.ok) {
     let message = `接口调用失败: ${response.status}`;
@@ -113,8 +128,8 @@ const safeFetch = async <T>(path: string, init?: RequestInit, withJsonContentTyp
   return (await response.json()) as T;
 };
 
-export const createVoterToken = async () => {
-  const storageKey = `vote-token:${defaultVoteSettings.eventId}`;
+export const createVoterToken = async (eventId = RUNTIME_EVENT_ID) => {
+  const storageKey = `vote-token:${eventId}`;
   const cached = readLocalStorage(storageKey);
 
   if (cached) {
@@ -185,13 +200,13 @@ export const fetchResults = async (eventId = defaultVoteSettings.eventId): Promi
   );
 };
 
-export const fetchEventConfig = async (): Promise<VoteSettings> => {
+export const fetchEventConfig = async (eventId = RUNTIME_EVENT_ID): Promise<VoteSettings> => {
   if (USE_MOCK || !API_BASE_URL) {
     return defaultVoteSettings;
   }
 
   const response = await safeFetch<{ success: boolean; data: VoteSettings }>(
-    `/api/v1/events/config?eventId=${defaultVoteSettings.eventId}`
+    `/api/v1/events/config?eventId=${eventId}`
   );
 
   return {

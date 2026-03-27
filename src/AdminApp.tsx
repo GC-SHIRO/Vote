@@ -3,6 +3,7 @@ import {
   createAdminCandidate,
   deleteAdminCandidate,
   fetchAdminConfig,
+  RUNTIME_EVENT_ID,
   updateAdminCandidate,
   updateAdminConfig,
   uploadAvatar
@@ -66,7 +67,7 @@ const fromDateTimeLocalValue = (value: string) => {
 };
 
 const AdminApp = () => {
-  const eventId = defaultVoteSettings.eventId;
+  const eventId = RUNTIME_EVENT_ID || defaultVoteSettings.eventId;
   const [loading, setLoading] = useState(true);
   const [savingConfig, setSavingConfig] = useState(false);
   const [message, setMessage] = useState("正在加载后台配置...");

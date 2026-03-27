@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS vote_candidate (
   candidate_code VARCHAR(64) NOT NULL,
   candidate_name VARCHAR(64) NOT NULL,
   academy VARCHAR(64) NULL,
+  major_name VARCHAR(64) NULL,
   song_name VARCHAR(128) NULL,
   avatar_url VARCHAR(512) NULL,
   display_order INT NOT NULL DEFAULT 0,
@@ -40,7 +41,7 @@ CREATE TABLE IF NOT EXISTS vote_record (
   user_agent VARCHAR(255) NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY uniq_vote_id (vote_id),
-  UNIQUE KEY uniq_event_voter (event_id, voter_token),
+  UNIQUE KEY uniq_event_voter_candidate (event_id, voter_token, candidate_id),
   KEY idx_event_candidate (event_id, candidate_id),
   KEY idx_vote_created_at (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
