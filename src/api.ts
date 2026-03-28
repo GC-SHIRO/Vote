@@ -9,19 +9,6 @@ import type {
 } from "./types";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.trim() ?? "";
-const USE_MOCK = (import.meta.env.VITE_USE_MOCK ?? "true") === "true";
-export const RUNTIME_EVENT_ID =
-  import.meta.env.VITE_EVENT_ID?.trim() || defaultVoteSettings.eventId;
-const ADMIN_AUTH_HEADER = `Basic ${btoa("admin:131072")}`;
-const REQUEST_TIMEOUT_MS = 10000;
-
-const mockDelay = (ms: number) =>
-  new Promise((resolve) => {
-    window.setTimeout(resolve, ms);
-  });
-
-let fingerprintAgentPromise: ReturnType<typeof FingerprintJS.load> | null = null;
-
 const readLocalStorage = (key: string) => {
   try {
     return window.localStorage.getItem(key);
@@ -35,6 +22,76 @@ const writeLocalStorage = (key: string, value: string) => {
     window.localStorage.setItem(key, value);
   } catch {
     // Keep voting flow available even when storage is not writable.
+  }
+};
+
+const resolveUseMock = () => {
+  const raw = String(import.meta.env.VITE_USE_MOCK ?? "").trim().toLowerCase();
+  if (raw === "true") {
+    return true;
+  }
+  if (raw === "false") {
+    return false;
+  }
+
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  return ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
+};
+
+const USE_MOCK = resolveUseMock();
+export const IS_MOCK_MODE = USE_MOCK;
+
+const readEventIdFromUrl = () => {
+  if (typeof window === "undefined") {
+    return "";
+  }
+
+  try {
+    const value = window.location.search ? new URLSearchParams(window.location.search).get("eventId") : "";
+    return value?.trim() ?? "";
+  } catch {
+    return "";
+  }
+};
+
+const ACTIVE_EVENT_STORAGE_KEY = "vote:active-event-id";
+
+const resolveRuntimeEventId = () => {
+  const fromUrl = readEventIdFromUrl();
+  if (fromUrl) {
+    return fromUrl;
+  }
+
+  const fromEnv = import.meta.env.VITE_EVENT_ID?.trim();
+  if (fromEnv) {
+    return fromEnv;
+  }
+
+  const fromStorage = readLocalStorage(ACTIVE_EVENT_STORAGE_KEY)?.trim();
+  if (fromStorage) {
+    return fromStorage;
+  }
+
+  return defaultVoteSettings.eventId;
+};
+
+export const RUNTIME_EVENT_ID = resolveRuntimeEventId();
+const ADMIN_AUTH_HEADER = `Basic ${btoa("admin:131072")}`;
+const REQUEST_TIMEOUT_MS = 10000;
+
+const mockDelay = (ms: number) =>
+  new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+
+let fingerprintAgentPromise: ReturnType<typeof FingerprintJS.load> | null = null;
+
+const rememberRuntimeEventId = (eventId: string) => {
+  if (eventId?.trim()) {
+    writeLocalStorage(ACTIVE_EVENT_STORAGE_KEY, eventId.trim());
   }
 };
 
@@ -136,7 +193,7 @@ export const createVoterToken = async (eventId = RUNTIME_EVENT_ID) => {
     return cached;
   }
 
-  if (USE_MOCK || !API_BASE_URL) {
+  if (USE_MOCK) {
     const token = `mock_${generateClientId()}`;
     writeLocalStorage(storageKey, token);
     return token;
@@ -162,7 +219,7 @@ export const createVoterToken = async (eventId = RUNTIME_EVENT_ID) => {
 export const submitVote = async (
   payload: VoteSubmitRequest
 ): Promise<VoteSubmitResponse> => {
-  if (USE_MOCK || !API_BASE_URL) {
+  if (USE_MOCK) {
     await mockDelay(700);
     return {
       success: true,
@@ -181,8 +238,8 @@ export const submitVote = async (
   });
 };
 
-export const fetchResults = async (eventId = defaultVoteSettings.eventId): Promise<VoteResultResponse> => {
-  if (USE_MOCK || !API_BASE_URL) {
+export const fetchResults = async (eventId = RUNTIME_EVENT_ID): Promise<VoteResultResponse> => {
+  if (USE_MOCK) {
     await mockDelay(300);
     return {
       success: true,
@@ -196,18 +253,20 @@ export const fetchResults = async (eventId = defaultVoteSettings.eventId): Promi
   }
 
   return safeFetch<VoteResultResponse>(
-    `/api/v1/votes/results?eventId=${eventId}`
+    `/api/v1/votes/results?eventId=${encodeURIComponent(eventId)}`
   );
 };
 
 export const fetchEventConfig = async (eventId = RUNTIME_EVENT_ID): Promise<VoteSettings> => {
-  if (USE_MOCK || !API_BASE_URL) {
+  if (USE_MOCK) {
     return defaultVoteSettings;
   }
 
   const response = await safeFetch<{ success: boolean; data: VoteSettings }>(
-    `/api/v1/events/config?eventId=${eventId}`
+    `/api/v1/events/config?eventId=${encodeURIComponent(eventId)}`
   );
+
+  rememberRuntimeEventId(response.data.eventId);
 
   return {
     ...response.data,
@@ -218,13 +277,15 @@ export const fetchEventConfig = async (eventId = RUNTIME_EVENT_ID): Promise<Vote
   };
 };
 
-export const fetchAdminConfig = async (eventId: string): Promise<AdminConfig> => {
+export const fetchAdminConfig = async (eventId = RUNTIME_EVENT_ID): Promise<AdminConfig> => {
   const response = await safeFetch<{ success: boolean; data: AdminConfig }>(
-    `/api/v1/admin/config?eventId=${eventId}`,
+    `/api/v1/admin/config?eventId=${encodeURIComponent(eventId)}`,
     {
       headers: getAdminHeaders()
     }
   );
+
+  rememberRuntimeEventId(response.data.eventId);
 
   return {
     ...response.data,
@@ -243,6 +304,7 @@ export const updateAdminConfig = async (payload: {
   maxSelections: number;
   startTime?: string | null;
   endTime?: string | null;
+  controlAction?: "start_now" | "stop_now" | "none";
 }) => {
   return safeFetch<{ success: boolean; message: string }>("/api/v1/admin/config", {
     method: "PUT",

@@ -222,11 +222,11 @@ cp .env.example .env
 编辑 .env：
 
 ```env
-VITE_API_BASE_URL=http://1.2.3.4
+VITE_API_BASE_URL=
 VITE_USE_MOCK=false
 ```
 
-说明：`1.2.3.4` 请替换为 ECS 公网 IP。
+说明：生产环境建议将 `VITE_API_BASE_URL` 留空，前端统一走同源 `/api` 代理，避免微信环境出现跨域或协议不一致问题。
 
 构建：
 
@@ -299,10 +299,11 @@ sudo systemctl reload nginx
 
 1. 统一通过 `http://ECS公网IP` 访问前端页面。
 2. 前后端环境变量都使用同一个公网 IP：
-	- 后端 `ALLOWED_ORIGINS=http://ECS公网IP`
-	- 前端 `VITE_API_BASE_URL=http://ECS公网IP`
+   - 后端 `ALLOWED_ORIGINS=http://ECS公网IP`
+	- 前端 `VITE_API_BASE_URL=`（推荐同源）或 `http://ECS公网IP`
 3. Nginx 使用 `server_name _;`，不依赖域名解析。
 4. 线上建议先在安全组限制来源 IP，再逐步开放。
+5. 若使用 HTTPS，`VITE_API_BASE_URL` 必须与页面协议一致，避免微信内置浏览器拦截混合内容。
 
 ## 9. 上线验收（按顺序）
 
@@ -360,6 +361,8 @@ sudo rsync -av --delete /home/deploy/Vote/dist/ /var/www/vote/
 sudo nginx -t
 sudo systemctl reload nginx
 ```
+
+推荐配合 [docs/UPDATE_FLOW.md](./UPDATE_FLOW.md) 执行标准化更新（含健康检查与回滚流程）。
 
 ## 12. 常见问题排查
 

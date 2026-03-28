@@ -157,6 +157,19 @@ const getEventByCode = async (eventCode) => {
   return rows[0] ?? null;
 };
 
+const normalizeEventCode = (value) => {
+  if (typeof value !== "string") {
+    return "";
+  }
+
+  return value.trim();
+};
+
+const resolveEventCode = (value) => {
+  const normalized = normalizeEventCode(value);
+  return normalized || config.eventCode;
+};
+
 const getCandidatesByCodes = async (eventId, candidateCodes) => {
   if (!candidateCodes.length) {
     return [];
@@ -257,16 +270,7 @@ app.get("/healthz", async (_request, response) => {
 });
 
 app.get("/api/v1/events/config", async (request, response) => {
-  const eventId = request.query.eventId;
-
-  if (!eventId || typeof eventId !== "string") {
-    response.status(400).json({
-      success: false,
-      message: "请求参数有误",
-      code: "INVALID_PARAM"
-    });
-    return;
-  }
+  const eventId = resolveEventCode(request.query.eventId);
 
   const event = await getEventByCode(eventId);
   if (!event) {
@@ -304,8 +308,9 @@ app.get("/api/v1/events/config", async (request, response) => {
 app.post("/api/v1/votes", async (request, response) => {
   const { eventId, voterToken } = request.body ?? {};
   const candidateCodes = normalizeCandidateCodes(request.body ?? {});
+  const resolvedEventId = resolveEventCode(eventId);
 
-  if (!eventId || !voterToken || candidateCodes.length === 0) {
+  if (!voterToken || candidateCodes.length === 0) {
     response.status(400).json({
       success: false,
       message: "请求参数有误，请刷新后重试",
@@ -314,7 +319,7 @@ app.post("/api/v1/votes", async (request, response) => {
     return;
   }
 
-  const event = await getEventByCode(eventId);
+  const event = await getEventByCode(resolvedEventId);
   if (!event) {
     response.status(404).json({
       success: false,
@@ -422,7 +427,7 @@ app.post("/api/v1/votes", async (request, response) => {
 
     if (isRedisReady()) {
       try {
-        await redis.del(`vote:result:${eventId}`);
+        await redis.del(`vote:result:${resolvedEventId}`);
       } catch (error) {
         console.warn("[Vote] Redis 缓存清理失败：", error.message);
       }
@@ -471,16 +476,7 @@ app.post("/api/v1/votes", async (request, response) => {
 });
 
 app.get("/api/v1/votes/results", async (request, response) => {
-  const eventId = request.query.eventId;
-
-  if (!eventId || typeof eventId !== "string") {
-    response.status(400).json({
-      success: false,
-      message: "请求参数有误，请刷新后重试",
-      code: "INVALID_PARAM"
-    });
-    return;
-  }
+  const eventId = resolveEventCode(request.query.eventId);
 
   const event = await getEventByCode(eventId);
   if (!event) {
@@ -548,12 +544,7 @@ app.get("/api/v1/votes/results", async (request, response) => {
 });
 
 app.get("/api/v1/admin/config", requireAdminAuth, async (request, response) => {
-  const eventId = request.query.eventId;
-
-  if (!eventId || typeof eventId !== "string") {
-    response.status(400).json({ success: false, message: "缺少 eventId" });
-    return;
-  }
+  const eventId = resolveEventCode(request.query.eventId);
 
   const event = await getEventByCode(eventId);
   if (!event) {
@@ -587,15 +578,12 @@ app.put("/api/v1/admin/config", requireAdminAuth, async (request, response) => {
     selectionMode,
     maxSelections,
     startTime,
-    endTime
+    endTime,
+    controlAction
   } = request.body ?? {};
 
-  if (!eventId || typeof eventId !== "string") {
-    response.status(400).json({ success: false, message: "缺少 eventId" });
-    return;
-  }
-
-  const event = await getEventByCode(eventId);
+  const resolvedEventId = resolveEventCode(eventId);
+  const event = await getEventByCode(resolvedEventId);
   if (!event) {
     response.status(404).json({ success: false, message: "活动不存在" });
     return;
@@ -605,6 +593,19 @@ app.put("/api/v1/admin/config", requireAdminAuth, async (request, response) => {
   const nextMode = selectionMode === "multi" ? "multi" : "single";
   const nextMaxBase = Number(maxSelections ?? 1);
   const nextMax = Number.isFinite(nextMaxBase) ? Math.max(1, Math.floor(nextMaxBase)) : 1;
+  const action = typeof controlAction === "string" ? controlAction : "";
+
+  let nextStartTime = startTime || null;
+  let nextEndTime = endTime || null;
+
+  if (action === "start_now") {
+    nextStartTime = new Date(Date.now() - 60 * 1000);
+    nextEndTime = null;
+  }
+
+  if (action === "stop_now") {
+    nextEndTime = new Date();
+  }
 
   await query(
     `
@@ -621,8 +622,8 @@ app.put("/api/v1/admin/config", requireAdminAuth, async (request, response) => {
     [
       nextStatus,
       resultVisible ? 1 : 0,
-      startTime || null,
-      endTime || null,
+      nextStartTime,
+      nextEndTime,
       nextMode,
       nextMode === "single" ? 1 : nextMax,
       event.id
@@ -631,7 +632,7 @@ app.put("/api/v1/admin/config", requireAdminAuth, async (request, response) => {
 
   if (isRedisReady()) {
     try {
-      await redis.del(`vote:result:${eventId}`);
+      await redis.del(`vote:result:${resolvedEventId}`);
     } catch {
       // no-op
     }
@@ -652,12 +653,14 @@ app.post("/api/v1/admin/candidates", requireAdminAuth, async (request, response)
     status
   } = request.body ?? {};
 
-  if (!eventId || !name) {
-    response.status(400).json({ success: false, message: "eventId 与姓名必填" });
+  const resolvedEventId = resolveEventCode(eventId);
+
+  if (!name) {
+    response.status(400).json({ success: false, message: "姓名必填" });
     return;
   }
 
-  const event = await getEventByCode(eventId);
+  const event = await getEventByCode(resolvedEventId);
   if (!event) {
     response.status(404).json({ success: false, message: "活动不存在" });
     return;
@@ -714,12 +717,14 @@ app.put("/api/v1/admin/candidates/:candidateCode", requireAdminAuth, async (requ
     status
   } = request.body ?? {};
 
-  if (!eventId || !candidateCode) {
+  const resolvedEventId = resolveEventCode(eventId);
+
+  if (!candidateCode) {
     response.status(400).json({ success: false, message: "缺少必要参数" });
     return;
   }
 
-  const event = await getEventByCode(eventId);
+  const event = await getEventByCode(resolvedEventId);
   if (!event) {
     response.status(404).json({ success: false, message: "活动不存在" });
     return;
@@ -757,12 +762,7 @@ app.put("/api/v1/admin/candidates/:candidateCode", requireAdminAuth, async (requ
 
 app.delete("/api/v1/admin/candidates/:candidateCode", requireAdminAuth, async (request, response) => {
   const { candidateCode } = request.params;
-  const eventId = request.query.eventId;
-
-  if (!eventId || typeof eventId !== "string") {
-    response.status(400).json({ success: false, message: "缺少 eventId" });
-    return;
-  }
+  const eventId = resolveEventCode(request.query.eventId);
 
   const event = await getEventByCode(eventId);
   if (!event) {

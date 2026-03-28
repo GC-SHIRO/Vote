@@ -1,10 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
-import { createVoterToken, fetchEventConfig, fetchResults, RUNTIME_EVENT_ID, submitVote } from "./api";
+import {
+  createVoterToken,
+  fetchEventConfig,
+  fetchResults,
+  IS_MOCK_MODE,
+  RUNTIME_EVENT_ID,
+  submitVote
+} from "./api";
 import { defaultVoteSettings } from "./data";
 import sztuLogo from "./img/log.svg";
 
 const App = () => {
   const [voteSettings, setVoteSettings] = useState(defaultVoteSettings);
+  const [configReady, setConfigReady] = useState(IS_MOCK_MODE);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState("请选择你支持的选手");
@@ -43,6 +51,7 @@ const App = () => {
         };
 
         await pullLatest();
+        setConfigReady(true);
         intervalId = window.setInterval(() => {
           pullLatest().catch(() => {
             // keep silent on polling failures
@@ -51,6 +60,7 @@ const App = () => {
       } catch {
         if (!disposed) {
           setMessage("配置或结果加载失败，稍后仍可正常提交投票");
+          setConfigReady(true);
         }
       }
     };
@@ -239,6 +249,25 @@ const App = () => {
   };
 
   const selectedCandidates = candidates.filter((candidate) => selectedIds.includes(candidate.id));
+
+  if (!configReady) {
+    return (
+      <main className="vote-page">
+        <header className="hero-panel">
+          <div className="hero-head">
+            <div className="hero-brand">
+              <img src={sztuLogo} alt="深圳技术大学校徽" className="school-logo" />
+              <div>
+                <p className="hero-tag">Shenzhen Technology University</p>
+                <h1>校园十大歌手大赛</h1>
+                <p>正在加载最新活动配置...</p>
+              </div>
+            </div>
+          </div>
+        </header>
+      </main>
+    );
+  }
 
   return (
     <main className="vote-page">

@@ -11,6 +11,8 @@ import {
 import { defaultVoteSettings } from "./data";
 import type { AdminCandidate, AdminConfig } from "./types";
 
+const ADMIN_PAGE_PASSWORD = "131072";
+
 type CandidateDraft = {
   id: string;
   name: string;
@@ -69,6 +71,8 @@ const fromDateTimeLocalValue = (value: string) => {
 const AdminApp = () => {
   const eventId = RUNTIME_EVENT_ID || defaultVoteSettings.eventId;
   const [loading, setLoading] = useState(true);
+  const [authChecked, setAuthChecked] = useState(false);
+  const [authorized, setAuthorized] = useState(false);
   const [savingConfig, setSavingConfig] = useState(false);
   const [message, setMessage] = useState("正在加载后台配置...");
 
@@ -107,13 +111,35 @@ const AdminApp = () => {
     }
   };
 
+  const verifyAccess = () => {
+    const input = window.prompt("请输入后台密码");
+    const passed = input === ADMIN_PAGE_PASSWORD;
+    setAuthorized(passed);
+    setAuthChecked(true);
+    setMessage(passed ? "密码校验通过，正在加载后台配置..." : "密码错误，无法进入后台管理");
+  };
+
   useEffect(() => {
-    loadConfig();
+    verifyAccess();
   }, []);
+
+  useEffect(() => {
+    if (!authorized) {
+      return;
+    }
+    loadConfig();
+  }, [authorized]);
 
   const saveConfig = async (nextStatus?: "active" | "closed" | "draft") => {
     setSavingConfig(true);
     try {
+      const controlAction =
+        nextStatus === "active"
+          ? "start_now"
+          : nextStatus === "closed"
+            ? "stop_now"
+            : "none";
+
       await updateAdminConfig({
         eventId,
         status: nextStatus ?? status,
@@ -121,7 +147,8 @@ const AdminApp = () => {
         maxSelections: selectionMode === "single" ? 1 : maxSelections,
         resultVisible,
         startTime: fromDateTimeLocalValue(startTime),
-        endTime: fromDateTimeLocalValue(endTime)
+        endTime: fromDateTimeLocalValue(endTime),
+        controlAction
       });
       if (nextStatus) {
         setStatus(nextStatus);
@@ -226,6 +253,36 @@ const AdminApp = () => {
   const changeCandidate = (id: string, patch: Partial<CandidateDraft>) => {
     setCandidates((current) => current.map((item) => (item.id === id ? { ...item, ...patch } : item)));
   };
+
+  if (!authChecked) {
+    return (
+      <main className="admin-page">
+        <section className="admin-card">
+          <h2>后台验证中</h2>
+          <p>正在检查后台访问权限...</p>
+        </section>
+      </main>
+    );
+  }
+
+  if (!authorized) {
+    return (
+      <main className="admin-page">
+        <section className="admin-card">
+          <h2>后台访问受限</h2>
+          <p>{message}</p>
+          <div className="action-row">
+            <button type="button" className="primary" onClick={verifyAccess}>
+              重新输入密码
+            </button>
+            <a href="/" className="jump-link">
+              返回投票页
+            </a>
+          </div>
+        </section>
+      </main>
+    );
+  }
 
   return (
     <main className="admin-page">

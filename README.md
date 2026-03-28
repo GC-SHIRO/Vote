@@ -6,3 +6,4 @@
 - 后端说明：`docs/BACKEND.md`
 - 后台说明：`docs/ADMIN.md`
 - 部署教学：`docs/DEPLOY.md`
+- 更新流程：`docs/UPDATE_FLOW.md`
