@@ -84,6 +84,17 @@
   }
 }
 
+@keyframes logo-intro-fade {
+  0%, 76% {
+    opacity: 1;
+    visibility: visible;
+  }
+  100% {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+
 @keyframes page-curtain-sweep {
   0% {
     opacity: 0;
@@ -199,6 +210,37 @@ img {
   animation: fade-up 0.55s ease-out both;
   position: relative;
   isolation: isolate;
+}
+
+.logo-intro {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  pointer-events: none;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at 50% 45%, rgba(244, 251, 255, 0.94), rgba(244, 251, 255, 0.72));
+  animation: logo-intro-fade 1.5s ease-out both;
+}
+
+.logo-intro-core {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+}
+
+.logo-intro-mark {
+  width: clamp(88px, 18vw, 152px);
+  animation: logo-fly-in 1.25s cubic-bezier(0.2, 0.92, 0.3, 1) both;
+  filter: drop-shadow(0 12px 20px rgba(42, 114, 189, 0.26));
+}
+
+.logo-intro-text {
+  margin: 0;
+  color: #1b4f82;
+  font-size: clamp(0.82rem, 2.2vw, 0.98rem);
+  letter-spacing: 0.08em;
+  font-weight: 700;
 }
 
 .page-entrance-overlay {

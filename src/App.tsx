@@ -286,9 +286,12 @@ const App = () => {
     return (
       <main className={`vote-page ${isFirstEntrance ? "is-first-entrance" : ""}`}>
         {isFirstEntrance && (
-          <div className="page-entrance-overlay" aria-hidden="true">
-            <i className="entrance-beam" />
-          </div>
+          <section className="logo-intro" aria-hidden="true">
+            <div className="logo-intro-core">
+              <img src={sztuLogo} alt="" className="logo-intro-mark" />
+              <p className="logo-intro-text">Shenzhen Technology University</p>
+            </div>
+          </section>
         )}
         <header className="hero-panel">
           <div className="hero-head">
@@ -309,9 +312,12 @@ const App = () => {
   return (
     <main className={`vote-page ${isFirstEntrance ? "is-first-entrance" : ""}`}>
       {isFirstEntrance && (
-        <div className="page-entrance-overlay" aria-hidden="true">
-          <i className="entrance-beam" />
-        </div>
+        <section className="logo-intro" aria-hidden="true">
+          <div className="logo-intro-core">
+            <img src={sztuLogo} alt="" className="logo-intro-mark" />
+            <p className="logo-intro-text">Shenzhen Technology University</p>
+          </div>
+        </section>
       )}
       <header className="hero-panel">
         <div className="hero-head">
