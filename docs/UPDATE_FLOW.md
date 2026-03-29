@@ -45,7 +45,7 @@ curl http://127.0.0.1:8080/healthz
 cd /home/deploy/Vote
 npm ci
 npm run build
-sudo rsync -av --delete /home/deploy/Vote/dist/ /var/www/vote/
+sudo rsync -av --delete /home/Vote/dist/ /var/www/vote/
 
 sudo nginx -t
 sudo systemctl reload nginx

@@ -10,6 +10,8 @@ import {
 import { defaultVoteSettings } from "./data";
 import sztuLogo from "./img/log.svg";
 
+const FIRST_ENTRANCE_KEY = "vote-page-first-entrance-v1";
+
 const App = () => {
   const [voteSettings, setVoteSettings] = useState(defaultVoteSettings);
   const [configReady, setConfigReady] = useState(IS_MOCK_MODE);
@@ -18,6 +20,7 @@ const App = () => {
   const [message, setMessage] = useState("请选择你支持的选手");
   const [hasVoted, setHasVoted] = useState(false);
   const [results, setResults] = useState<Record<string, number>>({});
+  const [isFirstEntrance, setIsFirstEntrance] = useState(false);
 
   const selectionMode = voteSettings.selectionMode ?? "single";
   const maxSelections = selectionMode === "single" ? 1 : voteSettings.maxSelections ?? 1;
@@ -73,6 +76,35 @@ const App = () => {
         window.clearInterval(intervalId);
       }
     };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    try {
+      const alreadyPlayed = window.sessionStorage.getItem(FIRST_ENTRANCE_KEY) === "1";
+      if (alreadyPlayed) {
+        return;
+      }
+
+      setIsFirstEntrance(true);
+      const timerId = window.setTimeout(() => {
+        setIsFirstEntrance(false);
+        try {
+          window.sessionStorage.setItem(FIRST_ENTRANCE_KEY, "1");
+        } catch {
+          // ignore storage write failures
+        }
+      }, 1500);
+
+      return () => {
+        window.clearTimeout(timerId);
+      };
+    } catch {
+      // ignore storage read failures
+    }
   }, []);
 
   useEffect(() => {
@@ -252,7 +284,12 @@ const App = () => {
 
   if (!configReady) {
     return (
-      <main className="vote-page">
+      <main className={`vote-page ${isFirstEntrance ? "is-first-entrance" : ""}`}>
+        {isFirstEntrance && (
+          <div className="page-entrance-overlay" aria-hidden="true">
+            <i className="entrance-beam" />
+          </div>
+        )}
         <header className="hero-panel">
           <div className="hero-head">
             <div className="hero-brand">
@@ -270,7 +307,12 @@ const App = () => {
   }
 
   return (
-    <main className="vote-page">
+    <main className={`vote-page ${isFirstEntrance ? "is-first-entrance" : ""}`}>
+      {isFirstEntrance && (
+        <div className="page-entrance-overlay" aria-hidden="true">
+          <i className="entrance-beam" />
+        </div>
+      )}
       <header className="hero-panel">
         <div className="hero-head">
           <div className="hero-brand">
@@ -282,7 +324,10 @@ const App = () => {
             </div>
           </div>
 
-          <div className="hero-badge" aria-label="活动状态">
+          <div
+            className={`hero-badge ${voteSettings.status === "active" ? "active" : "closed"}`}
+            aria-label="活动状态"
+          >
             <span className={`hero-dot ${voteSettings.status}`} aria-hidden="true" />
             <strong>{voteSettings.status === "active" ? "投票进行中" : "投票已关闭"}</strong>
           </div>

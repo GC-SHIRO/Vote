@@ -80,7 +80,8 @@ const resolveRuntimeEventId = () => {
 
 export const RUNTIME_EVENT_ID = resolveRuntimeEventId();
 const ADMIN_AUTH_HEADER = `Basic ${btoa("admin:131072")}`;
-const REQUEST_TIMEOUT_MS = 10000;
+const REQUEST_TIMEOUT_MS = 20000;
+const MOBILE_REQUEST_TIMEOUT_MS = 30000;
 
 const mockDelay = (ms: number) =>
   new Promise((resolve) => {
@@ -148,41 +149,146 @@ const toAbsoluteMediaUrl = (url: string) => {
   return API_BASE_URL ? `${API_BASE_URL}${url}` : url;
 };
 
-const safeFetch = async <T>(path: string, init?: RequestInit, withJsonContentType = true): Promise<T> => {
-  let response: Response;
+const isCrossOriginApiBase = () => {
+  if (!API_BASE_URL || typeof window === "undefined") {
+    return false;
+  }
+
   try {
-    response = await withTimeout(
-      fetch(`${API_BASE_URL}${path}`, {
-        ...init,
-        headers: {
-          ...getHeaders(withJsonContentType),
-          ...(init?.headers ?? {})
+    const currentOrigin = window.location.origin;
+    const apiOrigin = new URL(API_BASE_URL, currentOrigin).origin;
+    return apiOrigin !== currentOrigin;
+  } catch {
+    return false;
+  }
+};
+
+const buildRequestUrls = (path: string) => {
+  const urls: string[] = [];
+
+  if (API_BASE_URL) {
+    urls.push(`${API_BASE_URL}${path}`);
+  }
+
+  // When API base is cross-origin, mobile networks may not reach that address.
+  // Fallback to same-origin proxy route to improve reachability in WeChat/browser.
+  if (path.startsWith("/") && isCrossOriginApiBase()) {
+    urls.push(path);
+  }
+
+  if (urls.length === 0) {
+    urls.push(path);
+  }
+
+  return Array.from(new Set(urls));
+};
+
+const sleep = (ms: number) =>
+  new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+
+const isMobileClient = () => {
+  if (typeof navigator === "undefined") {
+    return false;
+  }
+
+  const ua = navigator.userAgent || "";
+  return /Mobile|Android|iPhone|iPad|MicroMessenger/i.test(ua);
+};
+
+const getRequestTimeoutMs = () => {
+  const raw = Number(import.meta.env.VITE_REQUEST_TIMEOUT_MS ?? 0);
+  if (Number.isFinite(raw) && raw > 0) {
+    return Math.floor(raw);
+  }
+
+  return isMobileClient() ? MOBILE_REQUEST_TIMEOUT_MS : REQUEST_TIMEOUT_MS;
+};
+
+const isRetriableNetworkError = (error: unknown) => {
+  if (error instanceof Error && error.message === "request_timeout") {
+    return true;
+  }
+
+  return error instanceof TypeError;
+};
+
+const safeFetch = async <T>(
+  path: string,
+  init?: RequestInit,
+  withJsonContentType = true,
+  options?: { retries?: number; timeoutMs?: number }
+): Promise<T> => {
+  const method = (init?.method || "GET").toUpperCase();
+  const retries = options?.retries ?? (method === "GET" ? 1 : 0);
+  const timeoutMs = options?.timeoutMs ?? getRequestTimeoutMs();
+  const urls = buildRequestUrls(path);
+
+  let lastError: unknown = null;
+
+  for (let urlIndex = 0; urlIndex < urls.length; urlIndex += 1) {
+    const requestUrl = urls[urlIndex];
+
+    for (let attempt = 0; attempt <= retries; attempt += 1) {
+      const controller = new AbortController();
+      let timerId = 0;
+
+      try {
+        timerId = window.setTimeout(() => {
+          controller.abort(new Error("request_timeout"));
+        }, timeoutMs);
+
+        const response = await fetch(requestUrl, {
+          ...init,
+          signal: controller.signal,
+          headers: {
+            ...getHeaders(withJsonContentType),
+            ...(init?.headers ?? {})
+          }
+        });
+
+        window.clearTimeout(timerId);
+
+        if (!response.ok) {
+          let message = `接口调用失败: ${response.status}`;
+          try {
+            const payload = (await response.json()) as { message?: string };
+            if (payload?.message) {
+              message = payload.message;
+            }
+          } catch {
+            // ignore parse error
+          }
+          throw new Error(message);
         }
-      }),
-      REQUEST_TIMEOUT_MS,
-      "request"
-    );
-  } catch (error) {
-    if (error instanceof Error && error.message === "request_timeout") {
-      throw new Error("网络超时，请稍后重试");
-    }
-    throw error;
-  }
 
-  if (!response.ok) {
-    let message = `接口调用失败: ${response.status}`;
-    try {
-      const payload = (await response.json()) as { message?: string };
-      if (payload?.message) {
-        message = payload.message;
+        return (await response.json()) as T;
+      } catch (error) {
+        window.clearTimeout(timerId);
+        const isAbortTimeout = error instanceof Error && /request_timeout|aborted|AbortError/i.test(error.message);
+        const normalizedError = isAbortTimeout ? new Error("request_timeout") : error;
+
+        if (attempt < retries && isRetriableNetworkError(normalizedError)) {
+          await sleep(350 * (attempt + 1));
+          continue;
+        }
+
+        if (isRetriableNetworkError(normalizedError) && urlIndex < urls.length - 1) {
+          lastError = normalizedError;
+          break;
+        }
+
+        if (normalizedError instanceof Error && normalizedError.message === "request_timeout") {
+          throw new Error("网络超时，请稍后再试");
+        }
+
+        throw normalizedError;
       }
-    } catch {
-      // ignore parse error
     }
-    throw new Error(message);
   }
 
-  return (await response.json()) as T;
+  throw lastError instanceof Error ? lastError : new Error("网络异常，请稍后再试");
 };
 
 export const createVoterToken = async (eventId = RUNTIME_EVENT_ID) => {
@@ -235,6 +341,9 @@ export const submitVote = async (
   return safeFetch<VoteSubmitResponse>("/api/v1/votes", {
     method: "POST",
     body: JSON.stringify(payload)
+  }, true, {
+    retries: 1,
+    timeoutMs: getRequestTimeoutMs()
   });
 };
 
@@ -253,7 +362,12 @@ export const fetchResults = async (eventId = RUNTIME_EVENT_ID): Promise<VoteResu
   }
 
   return safeFetch<VoteResultResponse>(
-    `/api/v1/votes/results?eventId=${encodeURIComponent(eventId)}`
+    `/api/v1/votes/results?eventId=${encodeURIComponent(eventId)}`,
+    undefined,
+    true,
+    {
+      retries: 1
+    }
   );
 };
 
@@ -263,7 +377,12 @@ export const fetchEventConfig = async (eventId = RUNTIME_EVENT_ID): Promise<Vote
   }
 
   const response = await safeFetch<{ success: boolean; data: VoteSettings }>(
-    `/api/v1/events/config?eventId=${encodeURIComponent(eventId)}`
+    `/api/v1/events/config?eventId=${encodeURIComponent(eventId)}`,
+    undefined,
+    true,
+    {
+      retries: 1
+    }
   );
 
   rememberRuntimeEventId(response.data.eventId);
