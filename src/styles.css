@@ -244,17 +244,24 @@ img {
 
 .logo-intro-mark {
   width: clamp(88px, 18vw, 152px);
+  height: clamp(88px, 18vw, 152px);
+  padding: 12px;
+  background-color: #ffffff;
+  border-radius: 50%;
+  object-fit: contain;
   animation: logo-fly-in 0.85s cubic-bezier(0.2, 0.92, 0.3, 1) both;
-  filter: drop-shadow(0 12px 20px rgba(0, 0, 0, 0.3));
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.25);
 }
 
-.logo-intro-text {
-  margin: 0;
-  color: #ffffff;
-  font-size: clamp(0.9rem, 2.4vw, 1.1rem);
-  letter-spacing: 0.12em;
-  font-weight: 700;
+.logo-intro-text-img {
+  width: clamp(200px, 45vw, 320px);
+  height: auto;
+  padding: 8px 16px;
+  background-color: #ffffff;
+  border-radius: 12px;
+  object-fit: contain;
   animation: fade-up 0.8s ease-out 0.2s both;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
 }
 
 .logo-intro-progress {
@@ -404,17 +411,12 @@ img {
   color: var(--text-muted);
 }
 
-.hero-tag {
-  margin: 0;
-  display: inline-flex;
-  padding: 6px 11px;
-  border-radius: 999px;
-  border: 1px solid rgba(31, 120, 209, 0.28);
-  background: linear-gradient(120deg, rgba(221, 241, 255, 0.92), rgba(206, 234, 255, 0.88));
-  color: var(--accent-strong);
-  font-size: 0.74rem;
-  letter-spacing: 0.07em;
-  font-weight: 700;
+.hero-tag-img {
+  display: block;
+  width: clamp(140px, 30vw, 220px);
+  height: auto;
+  object-fit: contain;
+  margin-bottom: 8px;
 }
 
 .hero-badge {

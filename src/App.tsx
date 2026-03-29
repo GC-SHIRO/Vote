@@ -8,7 +8,8 @@ import {
   submitVote
 } from "./api";
 import { defaultVoteSettings } from "./data";
-import sztuLogo from "./img/log.svg";
+import appLogo from "./img/logo.png";
+import appText from "./img/文字.png";
 
 const FIRST_ENTRANCE_KEY = "vote-page-first-entrance-v1";
 const APP_DEBUG_PREFIX = "[VoteDebug][App]";
@@ -366,8 +367,8 @@ const App = () => {
         {introState !== "done" && (
           <section className={`logo-intro ${introState === "sliding" ? "is-sliding" : ""}`} aria-hidden="true">
             <div className="logo-intro-core">
-              <img src={sztuLogo} alt="" className="logo-intro-mark" />
-              <p className="logo-intro-text">Shenzhen Technology University</p>
+              <img src={appLogo} alt="" className="logo-intro-mark" />
+              <img src={appText} alt="" className="logo-intro-text-img" />
               <div className="logo-intro-progress">{loadingProgress}%</div>
             </div>
           </section>
@@ -376,9 +377,9 @@ const App = () => {
           <header className="hero-panel">
             <div className="hero-head">
               <div className="hero-brand">
-                <img src={sztuLogo} alt="深圳技术大学校徽" className="school-logo" />
+                <img src={appLogo} alt="活动Logo" className="school-logo" />
                 <div>
-                  <p className="hero-tag">Shenzhen Technology University</p>
+                  <img src={appText} alt="活动文字" className="hero-tag-img" />
                   <h1>校园十大歌手大赛</h1>
                   <p>正在加载最新活动配置...</p>
                 </div>
@@ -395,8 +396,8 @@ const App = () => {
       {introState !== "done" && (
         <section className={`logo-intro ${introState === "sliding" ? "is-sliding" : ""}`} aria-hidden="true">
           <div className="logo-intro-core">
-            <img src={sztuLogo} alt="" className="logo-intro-mark" />
-            <p className="logo-intro-text">Shenzhen Technology University</p>
+            <img src={appLogo} alt="" className="logo-intro-mark" />
+            <img src={appText} alt="" className="logo-intro-text-img" />
             <div className="logo-intro-progress">{loadingProgress}%</div>
           </div>
         </section>
@@ -405,9 +406,9 @@ const App = () => {
         <header className="hero-panel">
           <div className="hero-head">
             <div className="hero-brand">
-              <img src={sztuLogo} alt="深圳技术大学校徽" className="school-logo" />
+              <img src={appLogo} alt="活动Logo" className="school-logo" />
               <div>
-                <p className="hero-tag">Shenzhen Technology University</p>
+                <img src={appText} alt="活动文字" className="hero-tag-img" />
                 <h1>{voteSettings.title}</h1>
                 <p>{voteSettings.subtitle}</p>
               </div>
