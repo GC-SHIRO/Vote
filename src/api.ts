@@ -173,14 +173,32 @@ const isCrossOriginApiBase = () => {
 const buildRequestUrls = (path: string) => {
   const urls: string[] = [];
 
+  const isLocalhostAddress = (hostname: string) => 
+    hostname === "localhost" || hostname === "127.0.0.1" || hostname === "[::1]";
+
+  let isApiBaseLocal = false;
   if (API_BASE_URL) {
-    urls.push(`${API_BASE_URL}${path}`);
+    try {
+      isApiBaseLocal = isLocalhostAddress(new URL(API_BASE_URL).hostname);
+    } catch {
+      // ignore
+    }
   }
 
-  // When API base is cross-origin, mobile networks may not reach that address.
-  // Fallback to same-origin proxy route to improve reachability in WeChat/browser.
-  if (path.startsWith("/") && isCrossOriginApiBase()) {
+  const isCurrentLocal = typeof window !== "undefined" && isLocalhostAddress(window.location.hostname);
+  
+  // If API is pointing to localhost but current page is NOT, reaching localhost from phone will fail/hang.
+  // In this case, we prefer the proxy route.
+  if (isApiBaseLocal && !isCurrentLocal && path.startsWith("/")) {
     urls.push(path);
+  } else {
+    if (API_BASE_URL) {
+      urls.push(`${API_BASE_URL}${path}`);
+    }
+    // Fallback to proxy route
+    if (path.startsWith("/") && isCrossOriginApiBase()) {
+      urls.push(path);
+    }
   }
 
   if (urls.length === 0) {
@@ -242,23 +260,34 @@ const safeFetch = async <T>(
     const requestUrl = urls[urlIndex];
 
     for (let attempt = 0; attempt <= retries; attempt += 1) {
-      const controller = new AbortController();
+      const controller = typeof AbortController !== "undefined" ? new AbortController() : null;
       let timerId = 0;
 
       try {
         const startedAt = Date.now();
-        timerId = window.setTimeout(() => {
-          controller.abort(new Error("request_timeout"));
-        }, timeoutMs);
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          timerId = window.setTimeout(() => {
+            if (controller) {
+              try {
+                controller.abort(new Error("request_timeout"));
+              } catch {
+                controller.abort();
+              }
+            }
+            reject(new Error("request_timeout"));
+          }, timeoutMs);
+        });
 
-        const response = await fetch(requestUrl, {
+        const fetchPromise = fetch(requestUrl, {
           ...init,
-          signal: controller.signal,
+          ...(controller ? { signal: controller.signal } : {}),
           headers: {
             ...getHeaders(withJsonContentType),
             ...(init?.headers ?? {})
           }
         });
+
+        const response = await Promise.race([fetchPromise, timeoutPromise]);
 
         window.clearTimeout(timerId);
 
