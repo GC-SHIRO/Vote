@@ -107,6 +107,9 @@ const App = () => {
     };
   }, []);
 
+  const [loadingProgress, setLoadingProgress] = useState(0);
+  const [introState, setIntroState] = useState<"loading" | "sliding" | "done">("done");
+
   useEffect(() => {
     if (typeof window === "undefined") {
       return;
@@ -115,23 +118,49 @@ const App = () => {
     try {
       const alreadyPlayed = window.sessionStorage.getItem(FIRST_ENTRANCE_KEY) === "1";
       if (alreadyPlayed) {
+        setIsFirstEntrance(false);
         return;
       }
 
-      setIsFirstEntrance(true);
+      setIntroState("loading");
+      setIsFirstEntrance(false); // 延迟到 sliding 之后才触发首屏动画
+      
+      let progress = 0;
+      const intervalId = window.setInterval(() => {
+        progress += Math.floor(Math.random() * 12) + 6;
+        if (progress > 97) progress = 97;
+        setLoadingProgress(progress);
+      }, 100);
+
       const timerId = window.setTimeout(() => {
-        setIsFirstEntrance(false);
-        try {
-          window.sessionStorage.setItem(FIRST_ENTRANCE_KEY, "1");
-        } catch {
-          // ignore storage write failures
-        }
-      }, 1500);
+        setLoadingProgress(100);
+        window.clearInterval(intervalId);
+        
+        window.setTimeout(() => {
+          setIntroState("sliding"); // Logo 开始飞出，色块平移离开
+          
+          window.setTimeout(() => {
+            setIntroState("done"); // 色块完全离开
+            setIsFirstEntrance(true); // 开始组件飞入动画
+            
+            // 首屏动画结束后，清理类名（让重置正常）
+            window.setTimeout(() => setIsFirstEntrance(false), 1200);
+
+            try {
+              window.sessionStorage.setItem(FIRST_ENTRANCE_KEY, "1");
+            } catch {
+              // ignore storage write failures
+            }
+          }, 800); // 留给滑动和透明度降低的动画时间
+        }, 500); // 留时间给 logo 飞出，进度 100% 后停顿 0.5s
+      }, 1500); // 总共加载时间设为 1.5s
 
       return () => {
+        window.clearInterval(intervalId);
         window.clearTimeout(timerId);
       };
     } catch {
+      setIsFirstEntrance(false);
       // ignore storage read failures
     }
   }, []);
@@ -333,50 +362,55 @@ const App = () => {
 
   if (!configReady) {
     return (
-      <main className={`vote-page ${isFirstEntrance ? "is-first-entrance" : ""}`}>
-        {isFirstEntrance && (
-          <section className="logo-intro" aria-hidden="true">
+      <>
+        {introState !== "done" && (
+          <section className={`logo-intro ${introState === "sliding" ? "is-sliding" : ""}`} aria-hidden="true">
             <div className="logo-intro-core">
               <img src={sztuLogo} alt="" className="logo-intro-mark" />
               <p className="logo-intro-text">Shenzhen Technology University</p>
+              <div className="logo-intro-progress">{loadingProgress}%</div>
             </div>
           </section>
         )}
+        <main className={`vote-page ${introState !== "done" ? "is-loading-entrance" : ""} ${isFirstEntrance ? "is-first-entrance" : ""}`}>
+          <header className="hero-panel">
+            <div className="hero-head">
+              <div className="hero-brand">
+                <img src={sztuLogo} alt="深圳技术大学校徽" className="school-logo" />
+                <div>
+                  <p className="hero-tag">Shenzhen Technology University</p>
+                  <h1>校园十大歌手大赛</h1>
+                  <p>正在加载最新活动配置...</p>
+                </div>
+              </div>
+            </div>
+          </header>
+        </main>
+      </>
+    );
+  }
+
+  return (
+    <>
+      {introState !== "done" && (
+        <section className={`logo-intro ${introState === "sliding" ? "is-sliding" : ""}`} aria-hidden="true">
+          <div className="logo-intro-core">
+            <img src={sztuLogo} alt="" className="logo-intro-mark" />
+            <p className="logo-intro-text">Shenzhen Technology University</p>
+            <div className="logo-intro-progress">{loadingProgress}%</div>
+          </div>
+        </section>
+      )}
+      <main className={`vote-page ${introState !== "done" ? "is-loading-entrance" : ""} ${isFirstEntrance ? "is-first-entrance" : ""}`}>
         <header className="hero-panel">
           <div className="hero-head">
             <div className="hero-brand">
               <img src={sztuLogo} alt="深圳技术大学校徽" className="school-logo" />
               <div>
                 <p className="hero-tag">Shenzhen Technology University</p>
-                <h1>校园十大歌手大赛</h1>
-                <p>正在加载最新活动配置...</p>
+                <h1>{voteSettings.title}</h1>
+                <p>{voteSettings.subtitle}</p>
               </div>
-            </div>
-          </div>
-        </header>
-      </main>
-    );
-  }
-
-  return (
-    <main className={`vote-page ${isFirstEntrance ? "is-first-entrance" : ""}`}>
-      {isFirstEntrance && (
-        <section className="logo-intro" aria-hidden="true">
-          <div className="logo-intro-core">
-            <img src={sztuLogo} alt="" className="logo-intro-mark" />
-            <p className="logo-intro-text">Shenzhen Technology University</p>
-          </div>
-        </section>
-      )}
-      <header className="hero-panel">
-        <div className="hero-head">
-          <div className="hero-brand">
-            <img src={sztuLogo} alt="深圳技术大学校徽" className="school-logo" />
-            <div>
-              <p className="hero-tag">Shenzhen Technology University</p>
-              <h1>{voteSettings.title}</h1>
-              <p>{voteSettings.subtitle}</p>
-            </div>
           </div>
 
           <div
@@ -576,6 +610,7 @@ const App = () => {
         </aside>
       </section>
     </main>
+    </>
   );
 };
 

@@ -721,6 +721,14 @@ app.post("/api/v1/admin/candidates", requireAdminAuth, async (request, response)
     ]
   );
 
+  if (isRedisReady()) {
+    try {
+      await redis.del(`vote:result:${resolvedEventId}`);
+    } catch {
+      // no-op
+    }
+  }
+
   response.json({
     success: true,
     message: "候选人已创建",
@@ -788,6 +796,14 @@ app.put("/api/v1/admin/candidates/:candidateCode", requireAdminAuth, async (requ
     ]
   );
 
+  if (isRedisReady()) {
+    try {
+      await redis.del(`vote:result:${resolvedEventId}`);
+    } catch {
+      // no-op
+    }
+  }
+
   response.json({ success: true, message: "候选人已更新" });
   } catch (error) {
     console.error("[Admin] 更新候选人失败", error);
@@ -814,6 +830,14 @@ app.delete("/api/v1/admin/candidates/:candidateCode", requireAdminAuth, async (r
     `,
     [event.id, candidateCode]
   );
+
+  if (isRedisReady()) {
+    try {
+      await redis.del(`vote:result:${eventId}`);
+    } catch {
+      // no-op
+    }
+  }
 
   response.json({ success: true, message: "候选人已删除" });
   } catch (error) {

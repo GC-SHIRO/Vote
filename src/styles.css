@@ -204,43 +204,66 @@ img {
 }
 
 .vote-page {
-  width: min(1220px, calc(100% - 26px));
+  max-width: 1240px;
+  width: 100%;
   margin: 0 auto;
-  padding: 18px 0 40px;
+  padding: 18px 16px 40px;
   animation: fade-up 0.55s ease-out both;
   position: relative;
   isolation: isolate;
+  overflow-x: hidden;
 }
 
 .logo-intro {
   position: fixed;
   inset: 0;
-  z-index: 40;
+  z-index: 100;
   pointer-events: none;
   display: grid;
   place-items: center;
-  background: radial-gradient(circle at 50% 45%, rgba(244, 251, 255, 0.94), rgba(244, 251, 255, 0.72));
-  animation: logo-intro-fade 1.5s ease-out both;
+  background: #1b4f82; /* 蓝色色块挡住全屏 */
+  animation: none;
+  transition: transform 0.6s cubic-bezier(0.76, 0, 0.24, 1);
+}
+
+.logo-intro.is-sliding {
+  transform: translateY(-100%); /* 向上平移离开 */
 }
 
 .logo-intro-core {
   display: grid;
   justify-items: center;
-  gap: 10px;
+  gap: 14px;
+  transition: all 0.4s ease-in;
+}
+
+.logo-intro.is-sliding .logo-intro-core {
+  transform: translateY(-40px) scale(0.9);
+  opacity: 0;
 }
 
 .logo-intro-mark {
   width: clamp(88px, 18vw, 152px);
-  animation: logo-fly-in 1.25s cubic-bezier(0.2, 0.92, 0.3, 1) both;
-  filter: drop-shadow(0 12px 20px rgba(42, 114, 189, 0.26));
+  animation: logo-fly-in 0.85s cubic-bezier(0.2, 0.92, 0.3, 1) both;
+  filter: drop-shadow(0 12px 20px rgba(0, 0, 0, 0.3));
 }
 
 .logo-intro-text {
   margin: 0;
-  color: #1b4f82;
-  font-size: clamp(0.82rem, 2.2vw, 0.98rem);
-  letter-spacing: 0.08em;
+  color: #ffffff;
+  font-size: clamp(0.9rem, 2.4vw, 1.1rem);
+  letter-spacing: 0.12em;
   font-weight: 700;
+  animation: fade-up 0.8s ease-out 0.2s both;
+}
+
+.logo-intro-progress {
+  color: #aedfff;
+  font-size: 1.25rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  margin-top: 10px;
+  animation: fade-up 0.8s ease-out 0.3s both;
 }
 
 .page-entrance-overlay {
@@ -279,6 +302,15 @@ img {
   background: linear-gradient(102deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.96), rgba(255, 255, 255, 0));
   filter: blur(5px);
   animation: page-curtain-sweep 1.02s cubic-bezier(0.17, 0.85, 0.25, 1) 0.08s both;
+}
+
+.vote-page.is-loading-entrance .hero-panel,
+.vote-page.is-loading-entrance .layout-main,
+.vote-page.is-loading-entrance .candidates-panel,
+.vote-page.is-loading-entrance .chart-card,
+.vote-page.is-loading-entrance .vote-panel {
+  opacity: 0 !important;
+  animation: none !important;
 }
 
 .vote-page.is-first-entrance .hero-panel {
@@ -623,6 +655,10 @@ img {
   transition: border-color 0.22s ease, box-shadow 0.22s ease, transform 0.22s ease;
   opacity: 0;
   animation: rise-in 0.5s ease-out both;
+
+  /* 使卡片内容在网格中等高填充 */
+  display: flex;
+  flex-direction: column;
 }
 
 .candidate-card:nth-child(1) {
@@ -695,6 +731,9 @@ img {
 
 .candidate-content {
   padding: 13px;
+  display: flex;
+  flex-direction: column;
+  flex: 1; /* 让内容区域撑满，实现网格多列元素等高对齐 */
 }
 
 .candidate-line {
@@ -714,6 +753,7 @@ img {
   color: var(--accent-strong);
   font-size: 0.86rem;
   font-weight: 800;
+  white-space: nowrap;
 }
 
 .candidate-content p {
@@ -726,6 +766,7 @@ img {
   gap: 3px;
   color: var(--text-soft);
   font-size: 0.84rem;
+  margin-top: auto; /* 让底部的meta信息吸底对齐 */
 }
 
 .rule-box {
@@ -1043,6 +1084,12 @@ img {
   .hero-panel {
     border-radius: 26px;
     padding: 22px;
+  }
+}
+
+@media (min-width: 1200px) {
+  .candidate-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
