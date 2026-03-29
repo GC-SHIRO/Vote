@@ -271,7 +271,11 @@ const safeFetch = async <T>(
               try {
                 controller.abort(new Error("request_timeout"));
               } catch {
-                controller.abort();
+                try {
+                  controller.abort();
+                } catch {
+                  // ignore
+                }
               }
             }
             reject(new Error("request_timeout"));
@@ -379,10 +383,10 @@ export const createVoterToken = async (eventId = RUNTIME_EVENT_ID) => {
     writeLocalStorage(storageKey, token);
     debugLog("token:fingerprint", { eventId });
     return token;
-  } catch {
+  } catch (err) {
     const fallbackToken = `fp_fallback_${generateClientId()}`;
     writeLocalStorage(storageKey, fallbackToken);
-    debugLog("token:fallback", { eventId });
+    debugLog("token:fallback", { eventId, error: err });
     return fallbackToken;
   }
 };

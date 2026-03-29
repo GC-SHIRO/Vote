@@ -270,43 +270,49 @@ app.get("/healthz", async (_request, response) => {
 });
 
 app.get("/api/v1/events/config", async (request, response) => {
-  const eventId = resolveEventCode(request.query.eventId);
+  try {
+    const eventId = resolveEventCode(request.query.eventId);
 
-  const event = await getEventByCode(eventId);
-  if (!event) {
-    response.status(404).json({
-      success: false,
-      message: "活动不存在",
-      code: "EVENT_NOT_FOUND"
-    });
-    return;
-  }
-
-  const rule = parseRule(event.rule_json);
-  const candidates = await getEventCandidatesForPublic(event.id, Boolean(event.result_visible));
-
-  response.json({
-    success: true,
-    data: {
-      eventId: event.event_code,
-      title: "校园十大歌手大赛",
-      subtitle: "请选择你最支持的选手",
-      ruleText:
-        rule.mode === "single"
-          ? "当前为单选模式，每人限投 1 位选手"
-          : `当前为多选模式，每人最多可选 ${rule.maxSelections} 位选手`,
-      voteButtonText: "提交我的投票",
-      resultVisible: Boolean(event.result_visible),
-      status: event.status === "active" ? "active" : "closed",
-      selectionMode: rule.mode,
-      maxSelections: rule.maxSelections,
-      candidates
+    const event = await getEventByCode(eventId);
+    if (!event) {
+      response.status(404).json({
+        success: false,
+        message: "活动不存在",
+        code: "EVENT_NOT_FOUND"
+      });
+      return;
     }
-  });
+
+    const rule = parseRule(event.rule_json);
+    const candidates = await getEventCandidatesForPublic(event.id, Boolean(event.result_visible));
+
+    response.json({
+      success: true,
+      data: {
+        eventId: event.event_code,
+        title: "校园十大歌手大赛",
+        subtitle: "请选择你最支持的选手",
+        ruleText:
+          rule.mode === "single"
+            ? "当前为单选模式，每人限投 1 位选手"
+            : `当前为多选模式，每人最多可选 ${rule.maxSelections} 位选手`,
+        voteButtonText: "提交我的投票",
+        resultVisible: Boolean(event.result_visible),
+        status: event.status === "active" ? "active" : "closed",
+        selectionMode: rule.mode,
+        maxSelections: rule.maxSelections,
+        candidates
+      }
+    });
+  } catch (error) {
+    console.error("[Config] 获取配置失败", error);
+    response.status(500).json({ success: false, message: "服务端异常" });
+  }
 });
 
 app.post("/api/v1/votes", async (request, response) => {
-  const { eventId, voterToken } = request.body ?? {};
+  try {
+    const { eventId, voterToken } = request.body ?? {};
   const candidateCodes = normalizeCandidateCodes(request.body ?? {});
   const resolvedEventId = resolveEventCode(eventId);
 
@@ -416,7 +422,7 @@ app.post("/api/v1/votes", async (request, response) => {
             candidate.id,
             voterToken,
             getClientIp(request),
-            request.headers["user-agent"] ?? ""
+            String(request.headers["user-agent"] ?? "").slice(0, 255)
           ]
         );
         createdIds.push(voteId);
@@ -473,13 +479,18 @@ app.post("/api/v1/votes", async (request, response) => {
 
     throw error;
   }
+  } catch (error) {
+    console.error("[Vote] 投票操作失败", error);
+    response.status(500).json({ success: false, message: "服务端异常，请稍后重试" });
+  }
 });
 
 app.get("/api/v1/votes/results", async (request, response) => {
-  const eventId = resolveEventCode(request.query.eventId);
+  try {
+    const eventId = resolveEventCode(request.query.eventId);
 
-  const event = await getEventByCode(eventId);
-  if (!event) {
+    const event = await getEventByCode(eventId);
+    if (!event) {
     response.status(404).json({
       success: false,
       message: "活动不存在或已下线",
@@ -532,19 +543,24 @@ app.get("/api/v1/votes/results", async (request, response) => {
     candidates
   };
 
-  if (isRedisReady()) {
-    try {
-      await redis.set(resultCacheKey, JSON.stringify(payload), "EX", 10);
-    } catch (error) {
-      console.warn("[Result] Redis 缓存写入失败：", error.message);
+    if (isRedisReady()) {
+      try {
+        await redis.set(resultCacheKey, JSON.stringify(payload), "EX", 10);
+      } catch (error) {
+        console.warn("[Result] Redis 缓存写入失败：", error.message);
+      }
     }
-  }
 
-  response.json(payload);
+    response.json(payload);
+  } catch (error) {
+    console.error("[Result] 获取结果失败", error);
+    response.status(500).json({ success: false, message: "获取数据异常" });
+  }
 });
 
 app.get("/api/v1/admin/config", requireAdminAuth, async (request, response) => {
-  const eventId = resolveEventCode(request.query.eventId);
+  try {
+    const eventId = resolveEventCode(request.query.eventId);
 
   const event = await getEventByCode(eventId);
   if (!event) {
@@ -568,6 +584,10 @@ app.get("/api/v1/admin/config", requireAdminAuth, async (request, response) => {
       candidates
     }
   });
+  } catch (error) {
+    console.error("[Admin] 获取配置失败", error);
+    response.status(500).json({ success: false, message: "服务端异常" });
+  }
 });
 
 app.put("/api/v1/admin/config", requireAdminAuth, async (request, response) => {
@@ -595,63 +615,69 @@ app.put("/api/v1/admin/config", requireAdminAuth, async (request, response) => {
   const nextMax = Number.isFinite(nextMaxBase) ? Math.max(1, Math.floor(nextMaxBase)) : 1;
   const action = typeof controlAction === "string" ? controlAction : "";
 
-  let nextStartTime = startTime || null;
-  let nextEndTime = endTime || null;
+  try {
+    let nextStartTime = startTime ? new Date(startTime) : null;
+    let nextEndTime = endTime ? new Date(endTime) : null;
 
-  if (action === "start_now") {
-    nextStartTime = new Date(Date.now() - 60 * 1000);
-    nextEndTime = null;
-  }
-
-  if (action === "stop_now") {
-    nextEndTime = new Date();
-  }
-
-  await query(
-    `
-    UPDATE vote_event
-    SET
-      status = ?,
-      result_visible = ?,
-      start_time = ?,
-      end_time = ?,
-      rule_json = JSON_OBJECT('mode', ?, 'maxSelections', ?),
-      updated_at = CURRENT_TIMESTAMP
-    WHERE id = ?
-    `,
-    [
-      nextStatus,
-      resultVisible ? 1 : 0,
-      nextStartTime,
-      nextEndTime,
-      nextMode,
-      nextMode === "single" ? 1 : nextMax,
-      event.id
-    ]
-  );
-
-  if (isRedisReady()) {
-    try {
-      await redis.del(`vote:result:${resolvedEventId}`);
-    } catch {
-      // no-op
+    if (action === "start_now") {
+      nextStartTime = new Date(Date.now() - 60 * 1000);
+      nextEndTime = null;
     }
-  }
 
-  response.json({ success: true, message: "配置已更新" });
+    if (action === "stop_now") {
+      nextEndTime = new Date();
+    }
+
+    await query(
+      `
+      UPDATE vote_event
+      SET
+        status = ?,
+        result_visible = ?,
+        start_time = ?,
+        end_time = ?,
+        rule_json = JSON_OBJECT('mode', ?, 'maxSelections', ?),
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+      `,
+      [
+        nextStatus,
+        resultVisible ? 1 : 0,
+        nextStartTime,
+        nextEndTime,
+        nextMode,
+        nextMode === "single" ? 1 : nextMax,
+        event.id
+      ]
+    );
+
+    if (isRedisReady()) {
+      try {
+        await redis.del(`vote:result:${resolvedEventId}`);
+      } catch {
+        // no-op
+      }
+    }
+
+    response.json({ success: true, message: "配置已更新" });
+  } catch (error) {
+    console.error("[Admin] 更新配置失败", error);
+    response.status(500).json({ success: false, message: "服务端保存异常" });
+  }
 });
 
 app.post("/api/v1/admin/candidates", requireAdminAuth, async (request, response) => {
-  const {
-    eventId,
-    name,
-    academy,
-    major,
-    song,
-    avatarUrl,
-    displayOrder,
-    status
-  } = request.body ?? {};
+  try {
+    const {
+      eventId,
+      name,
+      academy,
+      major,
+      song,
+      avatarUrl,
+      displayOrder,
+      status
+    } = request.body ?? {};
 
   const resolvedEventId = resolveEventCode(eventId);
 
@@ -702,10 +728,15 @@ app.post("/api/v1/admin/candidates", requireAdminAuth, async (request, response)
       id: candidateCode
     }
   });
+  } catch (error) {
+    console.error("[Admin] 创建候选人失败", error);
+    response.status(500).json({ success: false, message: "服务端异常" });
+  }
 });
 
 app.put("/api/v1/admin/candidates/:candidateCode", requireAdminAuth, async (request, response) => {
-  const { candidateCode } = request.params;
+  try {
+    const { candidateCode } = request.params;
   const {
     eventId,
     name,
@@ -758,10 +789,15 @@ app.put("/api/v1/admin/candidates/:candidateCode", requireAdminAuth, async (requ
   );
 
   response.json({ success: true, message: "候选人已更新" });
+  } catch (error) {
+    console.error("[Admin] 更新候选人失败", error);
+    response.status(500).json({ success: false, message: "服务端异常" });
+  }
 });
 
 app.delete("/api/v1/admin/candidates/:candidateCode", requireAdminAuth, async (request, response) => {
-  const { candidateCode } = request.params;
+  try {
+    const { candidateCode } = request.params;
   const eventId = resolveEventCode(request.query.eventId);
 
   const event = await getEventByCode(eventId);
@@ -780,6 +816,10 @@ app.delete("/api/v1/admin/candidates/:candidateCode", requireAdminAuth, async (r
   );
 
   response.json({ success: true, message: "候选人已删除" });
+  } catch (error) {
+    console.error("[Admin] 删除候选人失败", error);
+    response.status(500).json({ success: false, message: "服务端异常" });
+  }
 });
 
 app.post(
@@ -787,17 +827,22 @@ app.post(
   requireAdminAuth,
   avatarUpload.single("avatar"),
   async (request, response) => {
-  if (!request.file) {
-    response.status(400).json({ success: false, message: "未接收到头像文件" });
-    return;
-  }
+    try {
+      if (!request.file) {
+        response.status(400).json({ success: false, message: "未接收到头像文件" });
+        return;
+      }
 
-  response.json({
-    success: true,
-    data: {
-      url: `/uploads/${request.file.filename}`
+      response.json({
+        success: true,
+        data: {
+          url: `/uploads/${request.file.filename}`
+        }
+      });
+    } catch (error) {
+      console.error("[Admin] 上传头像失败", error);
+      response.status(500).json({ success: false, message: "服务端异常" });
     }
-  });
   }
 );
 

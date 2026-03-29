@@ -8,7 +8,8 @@ export const redis = new Redis({
   db: config.redis.db,
   lazyConnect: true,
   maxRetriesPerRequest: 1,
-  enableReadyCheck: true
+  enableReadyCheck: true,
+  enableOfflineQueue: false
 });
 
 let redisReady = false;
