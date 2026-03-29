@@ -11,6 +11,11 @@ import { defaultVoteSettings } from "./data";
 import sztuLogo from "./img/log.svg";
 
 const FIRST_ENTRANCE_KEY = "vote-page-first-entrance-v1";
+const APP_DEBUG_PREFIX = "[VoteDebug][App]";
+
+const appLog = (...args: unknown[]) => {
+  console.log(APP_DEBUG_PREFIX, ...args);
+};
 
 const App = () => {
   const [voteSettings, setVoteSettings] = useState(defaultVoteSettings);
@@ -36,34 +41,58 @@ const App = () => {
 
   useEffect(() => {
     let disposed = false;
-    let intervalId = 0;
+    let timerId = 0;
+    appLog("bootstrap:start", { eventId: RUNTIME_EVENT_ID });
 
     const bootstrap = async () => {
       try {
         const pullLatest = async () => {
+          appLog("poll:config:start", { eventId: RUNTIME_EVENT_ID });
           const dynamicConfig = await fetchEventConfig(RUNTIME_EVENT_ID);
           if (disposed) {
             return;
           }
 
           setVoteSettings(dynamicConfig);
+          appLog("poll:config:done", {
+            eventId: dynamicConfig.eventId,
+            status: dynamicConfig.status,
+            candidates: dynamicConfig.candidates.length,
+            resultVisible: dynamicConfig.resultVisible
+          });
 
           if (dynamicConfig.resultVisible) {
+            appLog("poll:results:start", { eventId: dynamicConfig.eventId });
             await syncResults(dynamicConfig.eventId);
+            appLog("poll:results:done", { eventId: dynamicConfig.eventId });
           }
+        };
+
+        const scheduleNextPull = () => {
+          if (disposed) {
+            return;
+          }
+
+          timerId = window.setTimeout(() => {
+            pullLatest()
+              .catch(() => {
+                // keep silent on polling failures
+              })
+              .finally(() => {
+                scheduleNextPull();
+              });
+          }, 5000);
         };
 
         await pullLatest();
         setConfigReady(true);
-        intervalId = window.setInterval(() => {
-          pullLatest().catch(() => {
-            // keep silent on polling failures
-          });
-        }, 5000);
+        appLog("bootstrap:ready");
+        scheduleNextPull();
       } catch {
         if (!disposed) {
           setMessage("配置或结果加载失败，稍后仍可正常提交投票");
           setConfigReady(true);
+          appLog("bootstrap:error");
         }
       }
     };
@@ -72,8 +101,8 @@ const App = () => {
 
     return () => {
       disposed = true;
-      if (intervalId) {
-        window.clearInterval(intervalId);
+      if (timerId) {
+        window.clearTimeout(timerId);
       }
     };
   }, []);
@@ -225,6 +254,15 @@ const App = () => {
   };
 
   const handleVote = async () => {
+    appLog("vote:click", {
+      selectedCount: selectedIds.length,
+      selectedIds,
+      status: voteSettings.status,
+      selectionMode,
+      maxSelections,
+      hasVoted
+    });
+
     if (selectedIds.length === 0) {
       setMessage(selectionMode === "single" ? "提交前请先选择一位选手" : "请至少选择一位选手");
       return;
@@ -241,6 +279,7 @@ const App = () => {
 
     setSubmitting(true);
     setMessage("正在提交投票...");
+    appLog("vote:submit:begin", { eventId: voteSettings.eventId, selectedIds });
 
     try {
       const voterToken = await createVoterToken(voteSettings.eventId);
@@ -253,12 +292,18 @@ const App = () => {
       });
 
       if (!response.success) {
+        appLog("vote:submit:failed-response", { message: response.message });
         setMessage(response.message || "投票未成功，请稍后重试");
         return;
       }
 
       setHasVoted(true);
       setMessage(response.message);
+      appLog("vote:submit:success", {
+        message: response.message,
+        totalVotes: response.totalVotes,
+        acceptedCount: response.acceptedCount
+      });
 
       if (voteSettings.resultVisible) {
         try {
@@ -274,9 +319,13 @@ const App = () => {
         }
       }
     } catch (error) {
+      appLog("vote:submit:error", {
+        error: error instanceof Error ? error.message : String(error)
+      });
       setMessage(error instanceof Error ? error.message : "网络异常，请稍后再试");
     } finally {
       setSubmitting(false);
+      appLog("vote:submit:finally");
     }
   };
 

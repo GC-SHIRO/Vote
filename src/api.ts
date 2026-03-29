@@ -9,6 +9,11 @@ import type {
 } from "./types";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.trim() ?? "";
+const DEBUG_PREFIX = "[VoteDebug]";
+
+const debugLog = (...args: unknown[]) => {
+  console.log(DEBUG_PREFIX, ...args);
+};
 const readLocalStorage = (key: string) => {
   try {
     return window.localStorage.getItem(key);
@@ -82,6 +87,8 @@ export const RUNTIME_EVENT_ID = resolveRuntimeEventId();
 const ADMIN_AUTH_HEADER = `Basic ${btoa("admin:131072")}`;
 const REQUEST_TIMEOUT_MS = 20000;
 const MOBILE_REQUEST_TIMEOUT_MS = 30000;
+const SUBMIT_TIMEOUT_MS = 12000;
+const MOBILE_SUBMIT_TIMEOUT_MS = 15000;
 
 const mockDelay = (ms: number) =>
   new Promise((resolve) => {
@@ -206,6 +213,8 @@ const getRequestTimeoutMs = () => {
   return isMobileClient() ? MOBILE_REQUEST_TIMEOUT_MS : REQUEST_TIMEOUT_MS;
 };
 
+const getSubmitTimeoutMs = () => (isMobileClient() ? MOBILE_SUBMIT_TIMEOUT_MS : SUBMIT_TIMEOUT_MS);
+
 const isRetriableNetworkError = (error: unknown) => {
   if (error instanceof Error && error.message === "request_timeout") {
     return true;
@@ -225,6 +234,8 @@ const safeFetch = async <T>(
   const timeoutMs = options?.timeoutMs ?? getRequestTimeoutMs();
   const urls = buildRequestUrls(path);
 
+  debugLog("request:start", { path, method, retries, timeoutMs, urls });
+
   let lastError: unknown = null;
 
   for (let urlIndex = 0; urlIndex < urls.length; urlIndex += 1) {
@@ -235,6 +246,7 @@ const safeFetch = async <T>(
       let timerId = 0;
 
       try {
+        const startedAt = Date.now();
         timerId = window.setTimeout(() => {
           controller.abort(new Error("request_timeout"));
         }, timeoutMs);
@@ -263,18 +275,38 @@ const safeFetch = async <T>(
           throw new Error(message);
         }
 
+        debugLog("request:success", {
+          path,
+          method,
+          url: requestUrl,
+          attempt,
+          urlIndex,
+          costMs: Date.now() - startedAt
+        });
+
         return (await response.json()) as T;
       } catch (error) {
         window.clearTimeout(timerId);
         const isAbortTimeout = error instanceof Error && /request_timeout|aborted|AbortError/i.test(error.message);
         const normalizedError = isAbortTimeout ? new Error("request_timeout") : error;
 
+        debugLog("request:error", {
+          path,
+          method,
+          url: requestUrl,
+          attempt,
+          urlIndex,
+          error: normalizedError instanceof Error ? normalizedError.message : String(normalizedError)
+        });
+
         if (attempt < retries && isRetriableNetworkError(normalizedError)) {
+          debugLog("request:retry", { path, method, url: requestUrl, nextAttempt: attempt + 1 });
           await sleep(350 * (attempt + 1));
           continue;
         }
 
         if (isRetriableNetworkError(normalizedError) && urlIndex < urls.length - 1) {
+          debugLog("request:fallback-url", { path, from: requestUrl, to: urls[urlIndex + 1] });
           lastError = normalizedError;
           break;
         }
@@ -296,12 +328,14 @@ export const createVoterToken = async (eventId = RUNTIME_EVENT_ID) => {
   const cached = readLocalStorage(storageKey);
 
   if (cached) {
+    debugLog("token:cached", { eventId });
     return cached;
   }
 
   if (USE_MOCK) {
     const token = `mock_${generateClientId()}`;
     writeLocalStorage(storageKey, token);
+    debugLog("token:mock", { eventId });
     return token;
   }
 
@@ -314,10 +348,12 @@ export const createVoterToken = async (eventId = RUNTIME_EVENT_ID) => {
     const result = await withTimeout(agent.get(), 3000, "fp_get");
     const token = `fp_${result.visitorId}`;
     writeLocalStorage(storageKey, token);
+    debugLog("token:fingerprint", { eventId });
     return token;
   } catch {
     const fallbackToken = `fp_fallback_${generateClientId()}`;
     writeLocalStorage(storageKey, fallbackToken);
+    debugLog("token:fallback", { eventId });
     return fallbackToken;
   }
 };
@@ -325,6 +361,13 @@ export const createVoterToken = async (eventId = RUNTIME_EVENT_ID) => {
 export const submitVote = async (
   payload: VoteSubmitRequest
 ): Promise<VoteSubmitResponse> => {
+  debugLog("vote:submit:start", {
+    eventId: payload.eventId,
+    candidateId: payload.candidateId,
+    candidateIds: payload.candidateIds,
+    hasToken: Boolean(payload.voterToken)
+  });
+
   if (USE_MOCK) {
     await mockDelay(700);
     return {
@@ -338,13 +381,21 @@ export const submitVote = async (
     };
   }
 
-  return safeFetch<VoteSubmitResponse>("/api/v1/votes", {
+  const response = await safeFetch<VoteSubmitResponse>("/api/v1/votes", {
     method: "POST",
     body: JSON.stringify(payload)
   }, true, {
-    retries: 1,
-    timeoutMs: getRequestTimeoutMs()
+    retries: 0,
+    timeoutMs: getSubmitTimeoutMs()
   });
+
+  debugLog("vote:submit:done", {
+    success: response.success,
+    totalVotes: response.totalVotes,
+    acceptedCount: response.acceptedCount
+  });
+
+  return response;
 };
 
 export const fetchResults = async (eventId = RUNTIME_EVENT_ID): Promise<VoteResultResponse> => {
@@ -384,6 +435,13 @@ export const fetchEventConfig = async (eventId = RUNTIME_EVENT_ID): Promise<Vote
       retries: 1
     }
   );
+
+  debugLog("config:fetched", {
+    eventId: response.data.eventId,
+    status: response.data.status,
+    candidates: response.data.candidates.length,
+    resultVisible: response.data.resultVisible
+  });
 
   rememberRuntimeEventId(response.data.eventId);
 
