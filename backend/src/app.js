@@ -1013,11 +1013,12 @@ app.post("/api/v1/admin/lottery/draw", requireAdminAuth, async (request, respons
       }
     } else {
       // 真实投票用户模式
+      // 注意：LIMIT 后面不能直接跟 ? 参数，需要字符串拼接（actualDrawCount 已限制 1-50，安全）
       const rows = await query(
         `SELECT student_id FROM vote_record 
          WHERE event_id = ? AND student_id IS NOT NULL AND student_id != '' 
-         ORDER BY RAND() LIMIT ?`,
-        [event.id, actualDrawCount]
+         ORDER BY RAND() LIMIT ${actualDrawCount}`,
+        [event.id]
       );
       winners = rows.map(r => r.student_id).filter(Boolean);
     }
