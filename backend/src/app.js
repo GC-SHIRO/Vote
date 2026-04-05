@@ -711,7 +711,9 @@ app.put("/api/v1/admin/config", requireAdminAuth, async (request, response) => {
     }
 
     const currentRule = parseRule(event.rule_json);
+    console.log("[Debug] Save config - body useReservedIds:", useReservedIds, "type:", typeof useReservedIds);
     const nextUseReservedIds = typeof useReservedIds === 'boolean' ? useReservedIds : currentRule.useReservedIds;
+    console.log("[Debug] Save config - nextUseReservedIds:", nextUseReservedIds, "currentRule:", currentRule.useReservedIds);
     await query(
       `
       UPDATE vote_event
