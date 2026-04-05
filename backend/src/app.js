@@ -966,6 +966,7 @@ app.post("/api/v1/admin/lottery/draw", requireAdminAuth, async (request, respons
     }
 
     const rule = parseRule(event.rule_json);
+    console.log("[Debug] Lottery draw - rule:", JSON.stringify(rule), "event.rule_json:", event.rule_json);
     const actualDrawCount = Math.max(1, Math.min(50, drawCount));
     
     // 检查表是否存在，不存在则创建
