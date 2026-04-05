@@ -159,6 +159,7 @@ const AdminApp = () => {
         selectionMode,
         maxSelections: selectionMode === "single" ? 1 : maxSelections,
         lotteryDrawCount: Math.max(1, Math.min(50, lotteryDrawCount)),
+        useReservedIds,
         resultVisible,
         startTime: fromDateTimeLocalValue(startTime),
         endTime: fromDateTimeLocalValue(endTime),

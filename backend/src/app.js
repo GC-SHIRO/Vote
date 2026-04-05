@@ -676,6 +676,7 @@ app.put("/api/v1/admin/config", requireAdminAuth, async (request, response) => {
     selectionMode,
     maxSelections,
     lotteryDrawCount,
+    useReservedIds,
     startTime,
     endTime,
     controlAction
@@ -710,6 +711,7 @@ app.put("/api/v1/admin/config", requireAdminAuth, async (request, response) => {
     }
 
     const currentRule = parseRule(event.rule_json);
+    const nextUseReservedIds = typeof useReservedIds === 'boolean' ? useReservedIds : currentRule.useReservedIds;
     await query(
       `
       UPDATE vote_event
@@ -730,7 +732,7 @@ app.put("/api/v1/admin/config", requireAdminAuth, async (request, response) => {
         nextMode,
         nextMode === "single" ? 1 : nextMax,
         nextLotteryDrawCount,
-        currentRule.useReservedIds ? true : false,
+        nextUseReservedIds ? 1 : 0,
         event.id
       ]
     );
