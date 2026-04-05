@@ -256,38 +256,54 @@ const getEventCandidatesForPublic = async (eventId, resultVisible) => {
 };
 
 const getDisplayedLotteryWinners = async (eventId) => {
-  const rows = await query(
-    `
-    SELECT student_id, round, created_at
-    FROM lottery_winner
-    WHERE event_id = ? AND is_displayed = 1
-    ORDER BY round ASC, id ASC
-    `,
-    [eventId]
-  );
-  return rows.map((item) => ({
-    studentId: item.student_id,
-    round: item.round,
-    createdAt: item.created_at
-  }));
+  try {
+    const rows = await query(
+      `
+      SELECT student_id, round, created_at
+      FROM lottery_winner
+      WHERE event_id = ? AND is_displayed = 1
+      ORDER BY round ASC, id ASC
+      `,
+      [eventId]
+    );
+    return rows.map((item) => ({
+      studentId: item.student_id,
+      round: item.round,
+      createdAt: item.created_at
+    }));
+  } catch (error) {
+    // 表不存在时返回空数组
+    if (error?.code === "ER_NO_SUCH_TABLE") {
+      return [];
+    }
+    throw error;
+  }
 };
 
 const getAllLotteryWinners = async (eventId) => {
-  const rows = await query(
-    `
-    SELECT student_id, round, is_displayed, created_at
-    FROM lottery_winner
-    WHERE event_id = ?
-    ORDER BY round ASC, id ASC
-    `,
-    [eventId]
-  );
-  return rows.map((item) => ({
-    studentId: item.student_id,
-    round: item.round,
-    isDisplayed: Boolean(item.is_displayed),
-    createdAt: item.created_at
-  }));
+  try {
+    const rows = await query(
+      `
+      SELECT student_id, round, is_displayed, created_at
+      FROM lottery_winner
+      WHERE event_id = ?
+      ORDER BY round ASC, id ASC
+      `,
+      [eventId]
+    );
+    return rows.map((item) => ({
+      studentId: item.student_id,
+      round: item.round,
+      isDisplayed: Boolean(item.is_displayed),
+      createdAt: item.created_at
+    }));
+  } catch (error) {
+    // 表不存在时返回空数组
+    if (error?.code === "ER_NO_SUCH_TABLE") {
+      return [];
+    }
+    throw error;
+  }
 };
 
 app.get("/healthz", async (_request, response) => {
@@ -950,6 +966,29 @@ app.post("/api/v1/admin/lottery/draw", requireAdminAuth, async (request, respons
     const rule = parseRule(event.rule_json);
     const actualDrawCount = Math.max(1, Math.min(50, drawCount));
     
+    // 检查表是否存在，不存在则创建
+    try {
+      await query(`SELECT 1 FROM lottery_winner LIMIT 1`);
+    } catch (err) {
+      if (err?.code === "ER_NO_SUCH_TABLE") {
+        // 创建表
+        await query(`
+          CREATE TABLE IF NOT EXISTS lottery_winner (
+            id BIGINT PRIMARY KEY AUTO_INCREMENT,
+            event_id BIGINT NOT NULL,
+            student_id VARCHAR(12) NOT NULL,
+            round INT NOT NULL DEFAULT 1,
+            is_displayed TINYINT(1) NOT NULL DEFAULT 1,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            KEY idx_lottery_event (event_id),
+            KEY idx_lottery_display (event_id, is_displayed)
+          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+        `);
+      } else {
+        throw err;
+      }
+    }
+    
     // 获取当前最大轮次
     const [roundRow] = await query(
       `SELECT MAX(round) as maxRound FROM lottery_winner WHERE event_id = ?`,
@@ -1036,6 +1075,17 @@ app.post("/api/v1/admin/lottery/reset", requireAdminAuth, async (request, respon
     const useReservedIds = typeof request.body?.useReservedIds === 'boolean' 
       ? request.body.useReservedIds 
       : rule.useReservedIds;
+
+    // 检查表是否存在
+    try {
+      await query(`SELECT 1 FROM lottery_winner LIMIT 1`);
+    } catch (err) {
+      if (err?.code === "ER_NO_SUCH_TABLE") {
+        // 表不存在，直接返回成功
+        return response.json({ success: true, message: "抽奖数据为空，无需重置" });
+      }
+      throw err;
+    }
 
     if (resetType === 'all') {
       // 完全重置：删除所有中奖记录
