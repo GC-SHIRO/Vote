@@ -118,7 +118,10 @@ const parseRule = (rawRule) => {
 
   return {
     mode,
-    maxSelections: mode === "single" ? 1 : maxSelections
+    maxSelections: mode === "single" ? 1 : maxSelections,
+    lotteryStatus: parsed.lotteryStatus || "not_started",
+    lotteryWinner: parsed.lotteryWinner || null,
+    useReservedIds: Boolean(parsed.useReservedIds)
   };
 };
 
@@ -252,6 +255,41 @@ const getEventCandidatesForPublic = async (eventId, resultVisible) => {
   }));
 };
 
+const getDisplayedLotteryWinners = async (eventId) => {
+  const rows = await query(
+    `
+    SELECT student_id, round, created_at
+    FROM lottery_winner
+    WHERE event_id = ? AND is_displayed = 1
+    ORDER BY round ASC, id ASC
+    `,
+    [eventId]
+  );
+  return rows.map((item) => ({
+    studentId: item.student_id,
+    round: item.round,
+    createdAt: item.created_at
+  }));
+};
+
+const getAllLotteryWinners = async (eventId) => {
+  const rows = await query(
+    `
+    SELECT student_id, round, is_displayed, created_at
+    FROM lottery_winner
+    WHERE event_id = ?
+    ORDER BY round ASC, id ASC
+    `,
+    [eventId]
+  );
+  return rows.map((item) => ({
+    studentId: item.student_id,
+    round: item.round,
+    isDisplayed: Boolean(item.is_displayed),
+    createdAt: item.created_at
+  }));
+};
+
 app.get("/healthz", async (_request, response) => {
   let dbOk = true;
   try {
@@ -285,6 +323,7 @@ app.get("/api/v1/events/config", async (request, response) => {
 
     const rule = parseRule(event.rule_json);
     const candidates = await getEventCandidatesForPublic(event.id, Boolean(event.result_visible));
+    const displayedWinners = await getDisplayedLotteryWinners(event.id);
 
     response.json({
       success: true,
@@ -301,6 +340,11 @@ app.get("/api/v1/events/config", async (request, response) => {
         status: event.status === "active" ? "active" : "closed",
         selectionMode: rule.mode,
         maxSelections: rule.maxSelections,
+        lotteryStatus: displayedWinners.length > 0 ? "drawn" : "not_started",
+        lotteryWinners: displayedWinners.map(w => w.studentId),
+        lotteryWinnerList: displayedWinners,
+        lotteryDrawCount: rule.lotteryDrawCount,
+        useReservedIds: rule.useReservedIds || false,
         candidates
       }
     });
@@ -312,15 +356,24 @@ app.get("/api/v1/events/config", async (request, response) => {
 
 app.post("/api/v1/votes", async (request, response) => {
   try {
-    const { eventId, voterToken } = request.body ?? {};
+    const { eventId, voterToken, studentId } = request.body ?? {};
   const candidateCodes = normalizeCandidateCodes(request.body ?? {});
   const resolvedEventId = resolveEventCode(eventId);
 
-  if (!voterToken || candidateCodes.length === 0) {
+  if (!voterToken || candidateCodes.length === 0 || !studentId) {
     response.status(400).json({
       success: false,
-      message: "请求参数有误，请刷新后重试",
+      message: "请求参数不完整（缺少选手或学号等），请刷新后重试",
       code: "INVALID_PARAM"
+    });
+    return;
+  }
+
+  if (!/^202[0-5]\d{8}$/.test(studentId) || studentId.length !== 12) {
+    response.status(400).json({
+      success: false,
+      message: "输入学号不正确",
+      code: "INVALID_STUDENT_ID"
     });
     return;
   }
@@ -413,8 +466,9 @@ app.post("/api/v1/votes", async (request, response) => {
             candidate_id,
             voter_token,
             client_ip,
-            user_agent
-          ) VALUES (?, ?, ?, ?, ?, ?)
+            user_agent,
+            student_id
+          ) VALUES (?, ?, ?, ?, ?, ?, ?)
           `,
           [
             voteId,
@@ -422,7 +476,8 @@ app.post("/api/v1/votes", async (request, response) => {
             candidate.id,
             voterToken,
             getClientIp(request),
-            String(request.headers["user-agent"] ?? "").slice(0, 255)
+            String(request.headers["user-agent"] ?? "").slice(0, 255),
+            studentId
           ]
         );
         createdIds.push(voteId);
@@ -570,6 +625,8 @@ app.get("/api/v1/admin/config", requireAdminAuth, async (request, response) => {
 
   const rule = parseRule(event.rule_json);
   const candidates = await getEventCandidatesForAdmin(event.id);
+  const allWinners = await getAllLotteryWinners(event.id);
+  const displayedWinners = allWinners.filter(w => w.isDisplayed);
 
   response.json({
     success: true,
@@ -579,6 +636,11 @@ app.get("/api/v1/admin/config", requireAdminAuth, async (request, response) => {
       resultVisible: Boolean(event.result_visible),
       selectionMode: rule.mode,
       maxSelections: rule.maxSelections,
+      lotteryStatus: displayedWinners.length > 0 ? "drawn" : "not_started",
+      lotteryWinners: displayedWinners.map(w => w.studentId),
+      lotteryWinnerList: allWinners,
+      lotteryDrawCount: rule.lotteryDrawCount,
+      useReservedIds: rule.useReservedIds || false,
       startTime: event.start_time,
       endTime: event.end_time,
       candidates
@@ -597,6 +659,7 @@ app.put("/api/v1/admin/config", requireAdminAuth, async (request, response) => {
     resultVisible,
     selectionMode,
     maxSelections,
+    lotteryDrawCount,
     startTime,
     endTime,
     controlAction
@@ -613,6 +676,8 @@ app.put("/api/v1/admin/config", requireAdminAuth, async (request, response) => {
   const nextMode = selectionMode === "multi" ? "multi" : "single";
   const nextMaxBase = Number(maxSelections ?? 1);
   const nextMax = Number.isFinite(nextMaxBase) ? Math.max(1, Math.floor(nextMaxBase)) : 1;
+  const nextLotteryDrawCountBase = Number(lotteryDrawCount ?? 1);
+  const nextLotteryDrawCount = Number.isFinite(nextLotteryDrawCountBase) ? Math.max(1, Math.min(50, Math.floor(nextLotteryDrawCountBase))) : 1;
   const action = typeof controlAction === "string" ? controlAction : "";
 
   try {
@@ -628,6 +693,7 @@ app.put("/api/v1/admin/config", requireAdminAuth, async (request, response) => {
       nextEndTime = new Date();
     }
 
+    const currentRule = parseRule(event.rule_json);
     await query(
       `
       UPDATE vote_event
@@ -636,7 +702,7 @@ app.put("/api/v1/admin/config", requireAdminAuth, async (request, response) => {
         result_visible = ?,
         start_time = ?,
         end_time = ?,
-        rule_json = JSON_OBJECT('mode', ?, 'maxSelections', ?),
+        rule_json = JSON_OBJECT('mode', ?, 'maxSelections', ?, 'lotteryDrawCount', ?, 'useReservedIds', ?),
         updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
       `,
@@ -647,6 +713,8 @@ app.put("/api/v1/admin/config", requireAdminAuth, async (request, response) => {
         nextEndTime,
         nextMode,
         nextMode === "single" ? 1 : nextMax,
+        nextLotteryDrawCount,
+        currentRule.useReservedIds ? true : false,
         event.id
       ]
     );
@@ -869,6 +937,132 @@ app.post(
     }
   }
 );
+
+app.post("/api/v1/admin/lottery/draw", requireAdminAuth, async (request, response) => {
+  try {
+    const eventId = resolveEventCode(request.body?.eventId);
+    const drawCount = Number(request.body?.count) || 1;
+    const event = await getEventByCode(eventId);
+    if (!event) {
+      return response.status(404).json({ success: false, message: "活动不存在" });
+    }
+
+    const rule = parseRule(event.rule_json);
+    const actualDrawCount = Math.max(1, Math.min(50, drawCount));
+    
+    // 获取当前最大轮次
+    const [roundRow] = await query(
+      `SELECT MAX(round) as maxRound FROM lottery_winner WHERE event_id = ?`,
+      [event.id]
+    );
+    const nextRound = (roundRow?.maxRound || 0) + 1;
+
+    let winners = [];
+
+    if (rule.useReservedIds) {
+      // 预留号池模式：从 202400000001-202400000020 中随机抽取
+      const min = 202400000001;
+      const max = 202400000020;
+      const usedReserved = new Set();
+      
+      while (winners.length < actualDrawCount && usedReserved.size < 20) {
+        const candidate = String(Math.floor(Math.random() * (max - min + 1)) + min);
+        if (!usedReserved.has(candidate)) {
+          usedReserved.add(candidate);
+          winners.push(candidate);
+        }
+      }
+    } else {
+      // 真实投票用户模式
+      const rows = await query(
+        `SELECT student_id FROM vote_record 
+         WHERE event_id = ? AND student_id IS NOT NULL AND student_id != '' 
+         ORDER BY RAND() LIMIT ?`,
+        [event.id, actualDrawCount]
+      );
+      winners = rows.map(r => r.student_id).filter(Boolean);
+    }
+
+    if (winners.length === 0) {
+      return response.status(400).json({ success: false, message: "当前活动暂无有效的投票学号可供抽奖" });
+    }
+
+    // 将之前的显示状态设为 0（隐藏）
+    await query(
+      `UPDATE lottery_winner SET is_displayed = 0 WHERE event_id = ?`,
+      [event.id]
+    );
+
+    // 插入新的中奖记录
+    for (const studentId of winners) {
+      await query(
+        `INSERT INTO lottery_winner (event_id, student_id, round, is_displayed) VALUES (?, ?, ?, 1)`,
+        [event.id, studentId, nextRound]
+      );
+    }
+
+    if (isRedisReady()) {
+      try {
+        await redis.del(`vote:result:${eventId}`);
+      } catch {
+        // no-op
+      }
+    }
+
+    response.json({ 
+      success: true, 
+      message: `抽奖成功，共抽出 ${winners.length} 人`, 
+      winners,
+      round: nextRound
+    });
+  } catch (error) {
+    console.error("[Admin] 抽奖失败", error);
+    response.status(500).json({ success: false, message: "抽奖失败，系统异常" });
+  }
+});
+
+app.post("/api/v1/admin/lottery/reset", requireAdminAuth, async (request, response) => {
+  try {
+    const eventId = resolveEventCode(request.body?.eventId);
+    const event = await getEventByCode(eventId);
+    if (!event) {
+      return response.status(404).json({ success: false, message: "活动不存在" });
+    }
+
+    const rule = parseRule(event.rule_json);
+    const resetType = request.body?.type || 'display'; // 'display' | 'all'
+    
+    // Toggle reserved ID config or just reset
+    const useReservedIds = typeof request.body?.useReservedIds === 'boolean' 
+      ? request.body.useReservedIds 
+      : rule.useReservedIds;
+
+    if (resetType === 'all') {
+      // 完全重置：删除所有中奖记录
+      await query(`DELETE FROM lottery_winner WHERE event_id = ?`, [event.id]);
+    } else {
+      // 仅重置显示状态：将当前显示设为隐藏（前台显示"等待抽奖"）
+      await query(
+        `UPDATE lottery_winner SET is_displayed = 0 WHERE event_id = ? AND is_displayed = 1`,
+        [event.id]
+      );
+    }
+
+    if (isRedisReady()) {
+      try {
+        await redis.del(`vote:result:${eventId}`);
+      } catch {
+        // no-op
+      }
+    }
+
+    const message = resetType === 'all' ? "抽奖数据已完全重置" : "前台已恢复为等待抽奖状态";
+    response.json({ success: true, message });
+  } catch (error) {
+    console.error("[Admin] 重置抽奖状态失败", error);
+    response.status(500).json({ success: false, message: "服务端异常" });
+  }
+});
 
 app.use((error, _request, response, _next) => {
   console.error("[Unhandled Error]", error);

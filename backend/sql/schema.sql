@@ -37,6 +37,7 @@ CREATE TABLE IF NOT EXISTS vote_record (
   event_id BIGINT NOT NULL,
   candidate_id BIGINT NOT NULL,
   voter_token VARCHAR(128) NOT NULL,
+  student_id VARCHAR(12) NULL,
   client_ip VARCHAR(64) NULL,
   user_agent VARCHAR(255) NULL,
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -44,4 +45,15 @@ CREATE TABLE IF NOT EXISTS vote_record (
   UNIQUE KEY uniq_event_voter_candidate (event_id, voter_token, candidate_id),
   KEY idx_event_candidate (event_id, candidate_id),
   KEY idx_vote_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS lottery_winner (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  event_id BIGINT NOT NULL,
+  student_id VARCHAR(12) NOT NULL,
+  round INT NOT NULL DEFAULT 1 COMMENT '抽奖轮次',
+  is_displayed TINYINT(1) NOT NULL DEFAULT 1 COMMENT '是否在前台展示',
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  KEY idx_lottery_event (event_id),
+  KEY idx_lottery_display (event_id, is_displayed)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

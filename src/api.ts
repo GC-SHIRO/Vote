@@ -512,6 +512,7 @@ export const updateAdminConfig = async (payload: {
   resultVisible: boolean;
   selectionMode: "single" | "multi";
   maxSelections: number;
+  lotteryDrawCount?: number;
   startTime?: string | null;
   endTime?: string | null;
   controlAction?: "start_now" | "stop_now" | "none";
@@ -520,6 +521,28 @@ export const updateAdminConfig = async (payload: {
     method: "PUT",
     headers: getAdminHeaders(),
     body: JSON.stringify(payload)
+  });
+};
+
+export const drawLottery = async (
+  eventId = RUNTIME_EVENT_ID, 
+  count = 1
+): Promise<{ success: boolean; message: string; winners?: string[]; round?: number }> => {
+  return safeFetch<{ success: boolean; message: string; winners?: string[]; round?: number }>("/api/v1/admin/lottery/draw", {
+    method: "POST",
+    headers: getAdminHeaders(),
+    body: JSON.stringify({ eventId, count })
+  });
+};
+
+export const resetLottery = async (
+  eventId = RUNTIME_EVENT_ID, 
+  type: 'display' | 'all' = 'display'
+): Promise<{ success: boolean; message: string }> => {
+  return safeFetch<{ success: boolean; message: string }>("/api/v1/admin/lottery/reset", {
+    method: "POST",
+    headers: getAdminHeaders(),
+    body: JSON.stringify({ eventId, type })
   });
 };
 

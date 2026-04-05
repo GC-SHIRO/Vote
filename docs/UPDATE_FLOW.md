@@ -39,6 +39,7 @@ git pull
 
 cd /home/deploy/Vote/backend
 npm ci --omit=dev
+npm run init-db    # 若有新表或新字段（如 student_id）更新，可自动尝试创建
 pm2 restart vote-api
 curl http://127.0.0.1:8080/healthz
 

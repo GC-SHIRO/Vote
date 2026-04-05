@@ -311,9 +311,11 @@ sudo systemctl reload nginx
 2. 打开 /admin，能进入后台并成功改配置。
 3. 切换单选/多选后，投票页规则即时变化。
 4. 上传候选人头像后，前台可显示。
-5. 停止投票后，投票页按钮应变为结束状态。
-6. 访问 /api/v1/votes/results 能返回正常数据。
-7. 访问 /healthz 返回 200。
+5. 尝试进行投票，确认会弹出输入12位学号的提示框，并能成功提交。
+6. 后台点击“开始抽奖”，前台页面顶部展示的抽签大屏能实时收到并展示中得的学号。
+7. 停止投票后，投票页按钮应变为结束状态。
+8. 访问 /api/v1/votes/results 能返回正常数据。
+9. 访问 /healthz 返回 200。
 
 ## 10. 日常运维命令
 
@@ -350,11 +352,12 @@ cd /home/deploy/Vote
 git pull
 
 cd /home/deploy/Vote/backend
-npm install
+npm ci --omit=dev
+npm run init-db    # 若有新字段更新（如 student_id），会自动同步到表结构中
 pm2 restart vote-api
 
 cd /home/deploy/Vote
-npm install
+npm ci
 npm run build
 sudo rsync -av --delete /home/deploy/Vote/dist/ /var/www/vote/
 

@@ -42,6 +42,7 @@ const schemaStatements = [
     event_id BIGINT NOT NULL,
     candidate_id BIGINT NOT NULL,
     voter_token VARCHAR(128) NOT NULL,
+    student_id VARCHAR(12) NULL,
     client_ip VARCHAR(64) NULL,
     user_agent VARCHAR(255) NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -59,7 +60,8 @@ const migrationStatements = [
   `ALTER TABLE vote_record DROP INDEX idx_event_phone`,
   `ALTER TABLE vote_record DROP COLUMN phone_number`,
   `ALTER TABLE vote_record DROP INDEX uniq_event_voter`,
-  `ALTER TABLE vote_candidate ADD COLUMN major_name VARCHAR(64) NULL AFTER academy`
+  `ALTER TABLE vote_candidate ADD COLUMN major_name VARCHAR(64) NULL AFTER academy`,
+  `ALTER TABLE vote_record ADD COLUMN student_id VARCHAR(12) NULL AFTER voter_token`
 ];
 
 const ensureUniqueIndex = async (tableName, indexName, columns) => {

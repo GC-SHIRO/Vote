@@ -21,6 +21,7 @@ fi
 mkdir -p /srv/vote/logs/api
 
 npm ci --omit=dev
+npm run init-db || echo "[deploy] 自动初始化数据表结构失败，可能需要手动介入（如新增列）"
 
 if command -v pm2 >/dev/null 2>&1; then
   pm2 startOrRestart ecosystem.config.cjs --env production

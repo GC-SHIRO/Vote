@@ -6,7 +6,9 @@ import {
   RUNTIME_EVENT_ID,
   updateAdminCandidate,
   updateAdminConfig,
-  uploadAvatar
+  uploadAvatar,
+  drawLottery,
+  resetLottery
 } from "./api";
 import { defaultVoteSettings } from "./data";
 import type { AdminCandidate, AdminConfig } from "./types";
@@ -83,6 +85,12 @@ const AdminApp = () => {
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
 
+  const [lotteryStatus, setLotteryStatus] = useState<"not_started" | "drawn">("not_started");
+  const [lotteryWinners, setLotteryWinners] = useState<string[]>([]);
+  const [lotteryWinnerList, setLotteryWinnerList] = useState<Array<{studentId: string; round: number; isDisplayed: boolean; createdAt?: string}>>([]);
+  const [lotteryDrawCount, setLotteryDrawCount] = useState(1);
+  const [useReservedIds, setUseReservedIds] = useState(false);
+
   const [candidates, setCandidates] = useState<CandidateDraft[]>([]);
   const [newCandidate, setNewCandidate] = useState<CandidateDraft>(emptyCandidate);
   const [savingCandidateId, setSavingCandidateId] = useState<string>("");
@@ -100,6 +108,11 @@ const AdminApp = () => {
       setSelectionMode(config.selectionMode);
       setMaxSelections(config.maxSelections);
       setResultVisible(config.resultVisible);
+      setLotteryStatus(config.lotteryStatus);
+      setLotteryWinners(config.lotteryWinners || []);
+      setLotteryWinnerList(config.lotteryWinnerList || []);
+      setLotteryDrawCount(config.lotteryDrawCount || 1);
+      setUseReservedIds(config.useReservedIds);
       setStartTime(toDateTimeLocalValue(config.startTime));
       setEndTime(toDateTimeLocalValue(config.endTime));
       setCandidates(config.candidates.map(toDraft));
@@ -145,6 +158,7 @@ const AdminApp = () => {
         status: nextStatus ?? status,
         selectionMode,
         maxSelections: selectionMode === "single" ? 1 : maxSelections,
+        lotteryDrawCount: Math.max(1, Math.min(50, lotteryDrawCount)),
         resultVisible,
         startTime: fromDateTimeLocalValue(startTime),
         endTime: fromDateTimeLocalValue(endTime),
@@ -160,6 +174,57 @@ const AdminApp = () => {
     } finally {
       setSavingConfig(false);
     }
+  };
+
+  const handleDrawLottery = async () => {
+    try {
+      const count = Math.max(1, Math.min(50, lotteryDrawCount));
+      const result = await drawLottery(eventId, count);
+      if (result.success) {
+        setMessage(result.message);
+        await loadConfig();
+      } else {
+        setMessage(result.message || "抽奖失败");
+      }
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "抽奖请求失败");
+    }
+  };
+
+  const handleResetLotteryDisplay = async () => {
+    try {
+      const result = await resetLottery(eventId, 'display');
+      if (result.success) {
+        setMessage(result.message);
+        await loadConfig();
+      } else {
+        setMessage(result.message || "重置失败");
+      }
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "重置请求失败");
+    }
+  };
+
+  const handleResetLotteryAll = async () => {
+    if (!window.confirm("确定要完全重置抽奖数据吗？这将删除所有历史中奖记录！")) {
+      return;
+    }
+    try {
+      const result = await resetLottery(eventId, 'all');
+      if (result.success) {
+        setMessage(result.message);
+        await loadConfig();
+      } else {
+        setMessage(result.message || "重置失败");
+      }
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "重置请求失败");
+    }
+  };
+
+  const handleToggleReservedIds = async (nextValue: boolean) => {
+    setUseReservedIds(nextValue);
+    setMessage("预留号配置已更新，点击保存配置以生效");
   };
 
   const onUploadAvatar = async (file: File, targetId: string) => {
@@ -373,6 +438,92 @@ const AdminApp = () => {
           </div>
 
           <p className="hint">当前活跃候选人: {activeCount} 人</p>
+        </article>
+
+        <article className="admin-card">
+          <h2>抽奖管理</h2>
+          <div className="form-grid">
+            <label className="switch-row">
+              <input
+                type="checkbox"
+                checked={useReservedIds}
+                onChange={(event) => handleToggleReservedIds(event.target.checked)}
+              />
+              使用预留号池 (202400000001 - 202400000020)
+            </label>
+            
+            <label>
+              每次抽奖人数
+              <input
+                type="number"
+                min={1}
+                max={50}
+                value={lotteryDrawCount}
+                onChange={(event) => setLotteryDrawCount(Math.max(1, Math.min(50, Number(event.target.value) || 1)))}
+              />
+            </label>
+            
+            <div style={{ marginTop: '1rem', padding: '1rem', background: '#f5f5f5', borderRadius: '4px', gridColumn: '1 / -1' }}>
+              <p>前台状态: <strong style={{ color: lotteryWinners.length > 0 ? '#e53935' : '#666' }}>
+                {lotteryWinners.length > 0 ? '已显示中奖名单' : '等待抽奖'}
+              </strong></p>
+              {lotteryWinners.length > 0 && (
+                <div style={{ marginTop: '0.5rem' }}>
+                  <p style={{ fontSize: '0.9rem', color: '#666', marginBottom: '0.5rem' }}>当前前台显示的中奖学号:</p>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                    {lotteryWinners.map((id, idx) => (
+                      <span key={idx} style={{ 
+                        background: '#e53935', 
+                        color: 'white', 
+                        padding: '4px 12px', 
+                        borderRadius: '16px',
+                        fontWeight: 'bold',
+                        fontSize: '1.1rem'
+                      }}>
+                        {id}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            {lotteryWinnerList.length > 0 && (
+              <div style={{ marginTop: '1rem', gridColumn: '1 / -1' }}>
+                <p style={{ fontSize: '0.9rem', color: '#666', marginBottom: '0.5rem' }}>历史中奖记录 (共 {lotteryWinnerList.length} 人):</p>
+                <div style={{ maxHeight: '150px', overflow: 'auto', background: '#fafafa', borderRadius: '8px', padding: '8px' }}>
+                  {lotteryWinnerList.map((winner, idx) => (
+                    <div key={idx} style={{ 
+                      display: 'flex', 
+                      justifyContent: 'space-between',
+                      padding: '4px 8px',
+                      borderBottom: '1px solid #eee',
+                      background: winner.isDisplayed ? '#fff3f3' : 'transparent'
+                    }}>
+                      <span style={{ fontFamily: 'monospace', fontWeight: winner.isDisplayed ? 'bold' : 'normal' }}>
+                        {winner.studentId}
+                      </span>
+                      <span style={{ fontSize: '0.8rem', color: '#999' }}>
+                        第{winner.round}轮 {winner.isDisplayed ? '(显示中)' : ''}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+          
+          <div className="action-row" style={{ marginTop: '1rem' }}>
+            <button type="button" className="primary" onClick={handleDrawLottery} disabled={loading}>
+              开始抽奖 ({lotteryDrawCount}人)
+            </button>
+            <button type="button" onClick={handleResetLotteryDisplay} disabled={loading}>
+              重置为等待抽奖
+            </button>
+            <button type="button" className="danger" onClick={handleResetLotteryAll} disabled={loading}>
+              完全重置数据
+            </button>
+          </div>
         </article>
 
         <article className="admin-card">

@@ -28,6 +28,11 @@ const App = () => {
   const [results, setResults] = useState<Record<string, number>>({});
   const [isFirstEntrance, setIsFirstEntrance] = useState(false);
 
+  // 学号输入弹窗状态
+  const [showStudentIdModal, setShowStudentIdModal] = useState(false);
+  const [studentIdInput, setStudentIdInput] = useState("");
+  const [studentIdError, setStudentIdError] = useState("");
+
   const selectionMode = voteSettings.selectionMode ?? "single";
   const maxSelections = selectionMode === "single" ? 1 : voteSettings.maxSelections ?? 1;
 
@@ -307,6 +312,20 @@ const App = () => {
       return;
     }
 
+    // 显示学号输入弹窗
+    setStudentIdInput("");
+    setStudentIdError("");
+    setShowStudentIdModal(true);
+  };
+
+  const validateAndSubmitVote = async () => {
+    const trimmed = studentIdInput.trim();
+    if (!/^202[0-5]\d{8}$/.test(trimmed) || trimmed.length !== 12) {
+      setStudentIdError("请输入12位有效学号（2020-2025开头）");
+      return;
+    }
+
+    setShowStudentIdModal(false);
     setSubmitting(true);
     setMessage("正在提交投票...");
     appLog("vote:submit:begin", { eventId: voteSettings.eventId, selectedIds });
@@ -316,6 +335,7 @@ const App = () => {
       const response = await submitVote({
         eventId: voteSettings.eventId,
         voterToken,
+        studentId: trimmed,
         ...(selectionMode === "single"
           ? { candidateId: selectedIds[0] }
           : { candidateIds: selectedIds })
@@ -521,6 +541,38 @@ const App = () => {
         </section>
 
         <aside className="side-panel">
+          <section className="chart-card" style={{ marginBottom: '1.5rem', background: '#fff', borderRadius: '12px', padding: '1.5rem', boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
+            <header className="section-header compact" style={{ borderBottom: '1px solid #ebebeb', paddingBottom: '0.5rem' }}>
+              <h2 style={{ fontSize: '1.25rem', color: '#333' }}>🎟️ 当前抽奖名单</h2>
+            </header>
+            <div style={{ textAlign: 'center', padding: '1.5rem 0' }}>
+              {(voteSettings.lotteryWinners && voteSettings.lotteryWinners.length > 0) ? (
+                <>
+                  <p style={{ fontSize: '1rem', color: '#666', marginBottom: '1rem' }}>
+                    恭喜以下 {voteSettings.lotteryWinners.length} 位中奖：
+                  </p>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '10px' }}>
+                    {voteSettings.lotteryWinners.map((winnerId, idx) => (
+                      <strong key={idx} style={{ 
+                        fontSize: '1.4rem', 
+                        color: '#fff', 
+                        background: '#d32f2f',
+                        padding: '8px 16px',
+                        borderRadius: '8px',
+                        letterSpacing: '1px',
+                        display: 'inline-block'
+                      }}>
+                        {winnerId}
+                      </strong>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <p style={{ fontSize: '1rem', color: '#999' }}>等待后台开启抽签中...</p>
+              )}
+            </div>
+          </section>
+
           <section className="chart-card">
             <header className="section-header compact">
               <h2>实时榜单</h2>
@@ -611,6 +663,147 @@ const App = () => {
         </aside>
       </section>
     </main>
+
+    {/* 学号输入弹窗 */}
+    {showStudentIdModal && (
+      <div 
+        className="modal-overlay" 
+        onClick={(e) => { if (e.target === e.currentTarget) setShowStudentIdModal(false); }}
+        style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0, 0, 0, 0.6)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '16px'
+        }}
+      >
+        <div 
+          className="modal-content"
+          style={{
+            background: 'linear-gradient(180deg, #ffffff 0%, #f8fbff 100%)',
+            borderRadius: '20px',
+            padding: '28px 24px',
+            width: '100%',
+            maxWidth: '360px',
+            boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.5) inset',
+            animation: 'modal-in 0.3s ease-out'
+          }}
+        >
+          <h3 style={{
+            margin: '0 0 8px',
+            fontSize: '1.3rem',
+            color: '#0b213f',
+            textAlign: 'center'
+          }}>
+            请输入学号
+          </h3>
+          <p style={{
+            margin: '0 0 20px',
+            fontSize: '0.9rem',
+            color: '#4e7399',
+            textAlign: 'center'
+          }}>
+            用于抽奖验证，请输入12位学号
+          </p>
+
+          <input
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            maxLength={12}
+            placeholder="2024xxxxxxxx"
+            value={studentIdInput}
+            onChange={(e) => {
+              const val = e.target.value.replace(/\D/g, '').slice(0, 12);
+              setStudentIdInput(val);
+              if (val.length === 12 && !/^202[0-5]/.test(val)) {
+                setStudentIdError("学号应以2020-2025开头");
+              } else {
+                setStudentIdError("");
+              }
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') validateAndSubmitVote();
+            }}
+            autoFocus
+            style={{
+              width: '100%',
+              padding: '14px 16px',
+              fontSize: '1.1rem',
+              border: `2px solid ${studentIdError ? '#ff6b6b' : '#d0e3f3'}`,
+              borderRadius: '12px',
+              background: '#fff',
+              outline: 'none',
+              textAlign: 'center',
+              letterSpacing: '1px',
+              transition: 'border-color 0.2s',
+              marginBottom: studentIdError ? '8px' : '20px'
+            }}
+          />
+
+          {studentIdError && (
+            <p style={{
+              margin: '0 0 16px',
+              color: '#ff6b6b',
+              fontSize: '0.85rem',
+              textAlign: 'center'
+            }}>
+              {studentIdError}
+            </p>
+          )}
+
+          <div style={{
+            display: 'flex',
+            gap: '12px'
+          }}>
+            <button
+              type="button"
+              onClick={() => setShowStudentIdModal(false)}
+              style={{
+                flex: 1,
+                padding: '14px 20px',
+                border: '1px solid #d0e3f3',
+                borderRadius: '12px',
+                background: '#f0f7ff',
+                color: '#4e7399',
+                fontSize: '1rem',
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+            >
+              取消
+            </button>
+            <button
+              type="button"
+              onClick={validateAndSubmitVote}
+              disabled={studentIdInput.length !== 12}
+              style={{
+                flex: 1,
+                padding: '14px 20px',
+                border: 'none',
+                borderRadius: '12px',
+                background: studentIdInput.length === 12 
+                  ? 'linear-gradient(125deg, #2082de 0%, #1165bb 100%)' 
+                  : '#c5d8e8',
+                color: '#fff',
+                fontSize: '1rem',
+                fontWeight: 700,
+                cursor: studentIdInput.length === 12 ? 'pointer' : 'not-allowed',
+                boxShadow: studentIdInput.length === 12 
+                  ? '0 4px 12px rgba(32, 130, 222, 0.4)' 
+                  : 'none'
+              }}
+            >
+              确认投票
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
     </>
   );
 };
