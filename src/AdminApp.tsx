@@ -8,7 +8,8 @@ import {
   updateAdminConfig,
   uploadAvatar,
   drawLottery,
-  resetLottery
+  resetLottery,
+  clearAllVotes
 } from "./api";
 import { defaultVoteSettings } from "./data";
 import type { AdminCandidate, AdminConfig } from "./types";
@@ -220,6 +221,26 @@ const AdminApp = () => {
       }
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "重置请求失败");
+    }
+  };
+
+  const handleClearAllVotes = async () => {
+    if (!window.confirm("⚠️ 警告：确定要清空所有投票吗？\n\n此操作将删除所有用户的投票记录，且无法恢复！")) {
+      return;
+    }
+    if (!window.confirm("再次确认：您真的确定要清空所有投票数据吗？")) {
+      return;
+    }
+    try {
+      const result = await clearAllVotes(eventId);
+      if (result.success) {
+        setMessage(result.message);
+        await loadConfig();
+      } else {
+        setMessage(result.message || "清空投票失败");
+      }
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "清空投票请求失败");
     }
   };
 
@@ -435,6 +456,18 @@ const AdminApp = () => {
             </button>
             <button type="button" className="primary" onClick={() => saveConfig()} disabled={savingConfig || loading}>
               保存配置
+            </button>
+          </div>
+
+          <div className="action-row" style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px dashed var(--admin-line)' }}>
+            <button 
+              type="button" 
+              className="danger" 
+              onClick={handleClearAllVotes} 
+              disabled={loading}
+              style={{ background: '#dc2626', color: '#fff' }}
+            >
+              ⚠️ 一键清空所有投票
             </button>
           </div>
 

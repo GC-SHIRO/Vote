@@ -1120,6 +1120,44 @@ app.post("/api/v1/admin/lottery/reset", requireAdminAuth, async (request, respon
   }
 });
 
+// 一键清空所有投票
+app.post("/api/v1/admin/votes/clear", requireAdminAuth, async (request, response) => {
+  try {
+    const eventId = resolveEventCode(request.body?.eventId);
+    const event = await getEventByCode(eventId);
+    if (!event) {
+      return response.status(404).json({ success: false, message: "活动不存在" });
+    }
+
+    // 删除该活动的所有投票记录
+    const [result] = await query(
+      `DELETE FROM vote_record WHERE event_id = ?`,
+      [event.id]
+    );
+
+    const deletedCount = result?.affectedRows || 0;
+
+    // 清除 Redis 缓存
+    if (isRedisReady()) {
+      try {
+        await redis.del(`vote:result:${eventId}`);
+      } catch {
+        // no-op
+      }
+    }
+
+    console.log(`[Admin] 已清空活动 ${eventId} 的所有投票，共 ${deletedCount} 条记录`);
+    response.json({ 
+      success: true, 
+      message: `已清空所有投票，共删除 ${deletedCount} 条记录`,
+      deletedCount
+    });
+  } catch (error) {
+    console.error("[Admin] 清空投票失败", error);
+    response.status(500).json({ success: false, message: "清空投票失败，系统异常" });
+  }
+});
+
 app.use((error, _request, response, _next) => {
   console.error("[Unhandled Error]", error);
   response.status(500).json({

@@ -547,6 +547,17 @@ export const resetLottery = async (
   });
 };
 
+// 一键清空所有投票
+export const clearAllVotes = async (
+  eventId = RUNTIME_EVENT_ID
+): Promise<{ success: boolean; message: string; deletedCount?: number }> => {
+  return safeFetch<{ success: boolean; message: string; deletedCount?: number }>("/api/v1/admin/votes/clear", {
+    method: "POST",
+    headers: getAdminHeaders(),
+    body: JSON.stringify({ eventId })
+  });
+};
+
 export const createAdminCandidate = async (payload: {
   eventId: string;
   name: string;
