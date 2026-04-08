@@ -715,7 +715,7 @@ const App = () => {
             inputMode="numeric"
             pattern="[0-9]*"
             maxLength={12}
-            placeholder="2024xxxxxxxx"
+            placeholder="202xxxxxxxxx"
             value={studentIdInput}
             onChange={(e) => {
               const val = e.target.value.replace(/\D/g, '').slice(0, 12);
