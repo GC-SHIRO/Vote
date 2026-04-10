@@ -649,11 +649,15 @@ img {
 .candidate-grid {
   margin-top: 15px;
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  width: 100%;
   gap: 12px;
 }
 
 .candidate-card {
   position: relative;
+  width: 100%;
+  min-width: 0;
   border: 1px solid rgba(124, 170, 213, 0.34);
   border-radius: 17px;
   overflow: hidden;
