@@ -614,6 +614,10 @@ img {
   align-items: start;
 }
 
+.layout-main > * {
+  min-width: 0;
+}
+
 .candidates-panel,
 .chart-card,
 .vote-panel {
@@ -651,12 +655,14 @@ img {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
   width: 100%;
+  max-width: 100%;
   gap: 12px;
 }
 
 .candidate-card {
   position: relative;
   width: 100%;
+  max-width: 100%;
   min-width: 0;
   border: 1px solid rgba(124, 170, 213, 0.34);
   border-radius: 17px;
@@ -740,6 +746,7 @@ img {
   padding: 13px;
   display: flex;
   flex-direction: column;
+  min-width: 0;
   flex: 1; /* 让内容区域撑满，实现网格多列元素等高对齐 */
 }
 
@@ -748,12 +755,15 @@ img {
   align-items: baseline;
   justify-content: space-between;
   gap: 8px;
+  min-width: 0;
 }
 
 .candidate-line h3 {
   margin: 0;
   color: var(--text-main);
   font-size: 1.08rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .candidate-line span {
@@ -766,6 +776,7 @@ img {
 .candidate-content p {
   margin: 8px 0;
   color: var(--text-muted);
+  overflow-wrap: anywhere;
 }
 
 .candidate-meta {
@@ -774,6 +785,7 @@ img {
   color: var(--text-soft);
   font-size: 0.84rem;
   margin-top: auto; /* 让底部的meta信息吸底对齐 */
+  overflow-wrap: anywhere;
 }
 
 .rule-box {
@@ -1126,6 +1138,10 @@ img {
 @media (max-width: 899px) {
   .hero-badge {
     justify-self: start;
+  }
+
+  .candidate-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
   }
 
   .side-panel {
