@@ -466,7 +466,7 @@
   animation: dashboard-fade-in 0.3s ease-out;
 }
 
-/* Bar chart (kept for reference, now replaced by TrendChart) */
+/* Bar chart */
 .dashboard-bar-chart {
   display: flex;
   align-items: flex-end;
@@ -474,56 +474,6 @@
   height: 140px;
   padding: 0 8px;
   margin-top: 8px;
-  flex-shrink: 0;
-}
-
-/* Trend chart */
-.trend-chart-wrapper {
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  margin-top: 4px;
-}
-
-.trend-chart-wrapper .recharts-responsive-container {
-  flex: 1;
-  min-height: 0;
-}
-
-.trend-chart-placeholder {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #4e7399;
-  font-size: 0.9rem;
-  font-style: italic;
-  min-height: 120px;
-}
-
-.trend-chart-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  padding: 6px 0 0;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.trend-legend-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 0.75rem;
-  color: #4e7399;
-  white-space: nowrap;
-}
-
-.trend-legend-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
   flex-shrink: 0;
 }
 

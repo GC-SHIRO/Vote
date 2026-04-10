@@ -1,5 +1,4 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { fetchEventConfig, RUNTIME_EVENT_ID } from "./api";
 import { defaultVoteSettings } from "./data";
 import type { RankedCandidate } from "./types";
@@ -72,78 +71,6 @@ const BarChart = memo(function BarChart({
   );
 });
 
-const TREND_COLORS = ["#1f78d1", "#0f9373", "#e67e22", "#8e44ad", "#2c3e50"];
-const MAX_HISTORY_POINTS = 30;
-
-const TrendChart = memo(function TrendChart({
-  history,
-  topNames
-}: {
-  history: Array<Record<string, number> & { tick: number }>;
-  topNames: string[];
-}) {
-  if (history.length < 2) {
-    return (
-      <div className="trend-chart-placeholder">
-        <span>收集数据中，趋势图即将显示...</span>
-      </div>
-    );
-  }
-
-  return (
-    <div className="trend-chart-wrapper" role="img" aria-label="票数趋势折线图">
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={history} margin={{ top: 8, right: 12, left: -8, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(123,170,219,0.15)" />
-          <XAxis
-            dataKey="tick"
-            tick={false}
-            axisLine={{ stroke: "rgba(123,170,219,0.2)" }}
-          />
-          <YAxis
-            tick={{ fontSize: 11, fill: "#4e7399" }}
-            axisLine={{ stroke: "rgba(123,170,219,0.2)" }}
-            width={40}
-          />
-          <Tooltip
-            contentStyle={{
-              background: "rgba(255,255,255,0.95)",
-              border: "1px solid rgba(123,170,219,0.25)",
-              borderRadius: 8,
-              fontSize: 13,
-              boxShadow: "0 4px 16px rgba(0,0,0,0.08)"
-            }}
-            labelFormatter={() => ""}
-          />
-          {topNames.map((name, i) => (
-            <Line
-              key={name}
-              type="monotone"
-              dataKey={name}
-              stroke={TREND_COLORS[i % TREND_COLORS.length]}
-              strokeWidth={2.5}
-              dot={false}
-              activeDot={{ r: 4, strokeWidth: 2 }}
-              isAnimationActive={false}
-            />
-          ))}
-        </LineChart>
-      </ResponsiveContainer>
-      <div className="trend-chart-legend">
-        {topNames.map((name, i) => (
-          <span key={name} className="trend-legend-item">
-            <span
-              className="trend-legend-dot"
-              style={{ background: TREND_COLORS[i % TREND_COLORS.length] }}
-            />
-            {name}
-          </span>
-        ))}
-      </div>
-    </div>
-  );
-});
-
 const LotterySection = memo(function LotterySection({
   currentScrollWinner,
   displayedWinners
@@ -202,11 +129,9 @@ const DashboardApp = () => {
   const [status, setStatus] = useState<"active" | "closed">("active");
   const [lastUpdate, setLastUpdate] = useState("");
   const [title, setTitle] = useState(defaultVoteSettings.title);
-  const [voteHistory, setVoteHistory] = useState<Array<Record<string, number> & { tick: number }>>([]);
   const prevVoteMap = useRef<Record<string, number>>({});
   const prevCandidatesRef = useRef<RankedCandidate[]>([]);
   const hasRecentActivity = useRef(false);
-  const tickCounter = useRef(0);
 
   const tickLottery = useCallback(() => {
     setLotteryQueue((prev) => prev.slice(1));
@@ -235,18 +160,6 @@ const DashboardApp = () => {
         }
 
         hasRecentActivity.current = true;
-
-        // Record vote history snapshot for trend chart (Top 5 only)
-        tickCounter.current += 1;
-        const top5 = sorted.slice(0, 5);
-        const snapshot: Record<string, number> & { tick: number } = { tick: tickCounter.current };
-        for (const c of top5) {
-          snapshot[c.name] = c.voteCount;
-        }
-        setVoteHistory((prev) => {
-          const next = [...prev, snapshot];
-          return next.length > MAX_HISTORY_POINTS ? next.slice(-MAX_HISTORY_POINTS) : next;
-        });
 
         setCandidates((prev) => {
           const prevMap = new Map(prev.map((c) => [c.id, c]));
@@ -327,11 +240,6 @@ const DashboardApp = () => {
     [candidates]
   );
 
-  const topNames = useMemo(
-    () => candidates.slice(0, 5).map((c) => c.name),
-    [candidates]
-  );
-
   const displayedWinners = useMemo(() => {
     const shown = lotteryWinners.filter((_, i) => i < currentLotteryIndex);
     return [...shown, ...lotteryQueue].length > 0 ? lotteryWinners : [];
@@ -382,7 +290,7 @@ const DashboardApp = () => {
                 <div className="stat-label">当前领先</div>
               </div>
             </div>
-            <TrendChart history={voteHistory} topNames={topNames} />
+            <BarChart candidates={candidates} maxVotes={maxVotes} />
           </section>
 
           <LotterySection
