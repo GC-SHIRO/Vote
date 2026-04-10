@@ -73,6 +73,13 @@ export type AdminLotteryWinner = {
   createdAt?: string;
 };
 
+export type RankedCandidate = Candidate & {
+  rank: number;
+  prevRank: number;
+  rankChanged: boolean;
+  voteDelta: number;
+};
+
 export type AdminConfig = {
   eventId: string;
   status: "active" | "closed" | "draft";

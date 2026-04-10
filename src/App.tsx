@@ -234,34 +234,15 @@ const App = () => {
     }));
   }, [sortedCandidates, totalVotes]);
 
-  const pieChartPaths = useMemo(() => {
-    let currentAngle = -90;
-    return voteBreakdown.map((candidate) => {
-      const angle = (candidate.shareRaw / 100) * 360;
-      const startAngleInRads = (currentAngle * Math.PI) / 180;
-      const endAngleInRads = ((currentAngle + angle) * Math.PI) / 180;
-
-      const cx = 50;
-      const cy = 50;
-      const r = 40;
-
-      const startX = cx + r * Math.cos(startAngleInRads);
-      const startY = cy + r * Math.sin(startAngleInRads);
-      const endX = cx + r * Math.cos(endAngleInRads);
-      const endY = cy + r * Math.sin(endAngleInRads);
-
-      const largeArcFlag = angle > 180 ? 1 : 0;
-
-      const pathData = [
-        `M ${cx} ${cy}`,
-        `L ${startX} ${startY}`,
-        `A ${r} ${r} 0 ${largeArcFlag} 1 ${endX} ${endY}`,
-        "Z"
-      ].join(" ");
-
-      currentAngle += angle;
-      return { id: candidate.id, pathData };
-    });
+  const barChartData = useMemo(() => {
+    const maxVotes = Math.max(...voteBreakdown.map((c) => c.voteCount), 1);
+    return voteBreakdown.map((candidate) => ({
+      id: candidate.id,
+      name: candidate.name,
+      votes: candidate.voteCount,
+      percentage: candidate.shareDisplay,
+      heightPercent: (candidate.voteCount / maxVotes) * 100
+    }));
   }, [voteBreakdown]);
 
   const onPickCandidate = (candidateId: string) => {
@@ -593,16 +574,19 @@ const App = () => {
               ))}
             </div>
 
-            <div className="pie-box" aria-label="票数份额饼图">
-              <svg viewBox="0 0 100 100" role="img" aria-label="候选人票数份额分布">
-                {pieChartPaths.map((slice, i) => (
-                  <path
-                    key={`pie-${slice.id}`}
-                    d={slice.pathData}
-                    className={`pie-slice pie-color-${(voteBreakdown.length - 1 - i) % 5 + 1}`}
-                  />
+            <div className="bar-chart-box" aria-label="票数柱状图">
+              <div className="bar-chart-container">
+                {barChartData.map((bar, i) => (
+                  <div key={`bar-${bar.id}`} className="bar-wrapper">
+                    <div className="bar-value">{bar.votes}</div>
+                    <div
+                      className={`bar bar-color-${i % 5 + 1}`}
+                      style={{ height: `${bar.heightPercent}%` }}
+                    />
+                    <div className="bar-label">{bar.name}</div>
+                  </div>
                 ))}
-              </svg>
+              </div>
             </div>
           </section>
 

@@ -1,7 +1,11 @@
 {
   "permissions": {
     "allow": [
-      "Bash(node --check src/app.js)"
+      "Bash(node --check src/app.js)",
+      "WebSearch",
+      "WebFetch(domain:cdn.jsdelivr.net)",
+      "WebFetch(domain:www.npmjs.com)",
+      "Bash(npm run:*)"
     ]
   }
 }

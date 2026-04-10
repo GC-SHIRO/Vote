@@ -901,52 +901,80 @@ img {
   border-radius: 4px;
 }
 
-.pie-box {
+.bar-chart-box {
   margin-top: 18px;
-  display: grid;
-  place-content: center;
   padding: 16px;
   background: linear-gradient(155deg, rgba(246, 252, 255, 0.98), rgba(231, 245, 255, 0.93));
   border-radius: 16px;
   border: 1px solid rgba(130, 177, 220, 0.28);
 }
 
-.pie-box svg {
-  width: 140px;
-  height: 140px;
-  filter: drop-shadow(0 6px 15px rgba(24, 102, 178, 0.12));
+.bar-chart-container {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  height: 160px;
+  padding-top: 24px;
 }
 
-.pie-slice {
-  stroke: rgba(255, 255, 255, 0.85);
-  stroke-width: 1.5;
-  transition: transform 0.2s ease, opacity 0.2s ease;
+.bar-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+  position: relative;
 }
 
-.pie-slice:hover {
-  transform: scale(1.03);
-  transform-origin: center;
-  opacity: 0.92;
+.bar-value {
+  position: absolute;
+  top: 0;
+  font-size: 11px;
+  font-weight: 600;
+  color: #1a5a9e;
 }
 
-.pie-color-1 {
-  fill: #1568bc;
+.bar {
+  width: 100%;
+  max-width: 48px;
+  border-radius: 6px 6px 2px 2px;
+  transition: height 0.4s ease, opacity 0.2s ease;
+  margin-top: auto;
 }
 
-.pie-color-2 {
-  fill: #1f7dd6;
+.bar:hover {
+  opacity: 0.85;
 }
 
-.pie-color-3 {
-  fill: #4b99e2;
+.bar-label {
+  margin-top: 6px;
+  font-size: 11px;
+  color: #3a6ea5;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
-.pie-color-4 {
-  fill: #77b3ea;
+.bar-color-1 {
+  background: linear-gradient(180deg, #1568bc, #1a5a9e);
 }
 
-.pie-color-5 {
-  fill: #aed4f4;
+.bar-color-2 {
+  background: linear-gradient(180deg, #1f7dd6, #1b6cba);
+}
+
+.bar-color-3 {
+  background: linear-gradient(180deg, #4b99e2, #3d87cc);
+}
+
+.bar-color-4 {
+  background: linear-gradient(180deg, #77b3ea, #6aa3d8);
+}
+
+.bar-color-5 {
+  background: linear-gradient(180deg, #aed4f4, #99c5e8);
 }
 
 .picked-driver {
