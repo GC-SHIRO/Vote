@@ -621,6 +621,9 @@ img {
 .candidates-panel,
 .chart-card,
 .vote-panel {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   padding: 17px;
   animation: fade-up 0.5s ease-out both;
 }
@@ -810,6 +813,9 @@ img {
   display: grid;
   gap: 14px;
   align-self: start;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .section-header.compact p {
@@ -835,6 +841,10 @@ img {
   position: relative;
   opacity: 0;
   animation: rise-in 0.42s ease-out both;
+}
+
+.rank-row > * {
+  min-width: 0;
 }
 
 .rank-row:nth-child(1) {
@@ -888,17 +898,22 @@ img {
   display: flex;
   align-items: baseline;
   gap: 8px;
+  min-width: 0;
+  flex-wrap: wrap;
 }
 
 .rank-info span {
   color: var(--text-main);
   font-weight: 600;
   font-size: 0.92rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .rank-info small {
   color: var(--text-soft);
   font-size: 0.76rem;
+  flex-shrink: 0;
 }
 
 .rank-row strong {
@@ -916,6 +931,10 @@ img {
   background: #f2f8ff;
   padding: 0 5px;
   border-radius: 4px;
+  max-width: calc(100% - 24px);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .bar-chart-box {
@@ -924,6 +943,9 @@ img {
   background: linear-gradient(155deg, rgba(246, 252, 255, 0.98), rgba(231, 245, 255, 0.93));
   border-radius: 16px;
   border: 1px solid rgba(130, 177, 220, 0.28);
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .bar-chart-container {
@@ -932,6 +954,8 @@ img {
   gap: 8px;
   height: 160px;
   padding-top: 24px;
+  width: 100%;
+  min-width: 0;
 }
 
 .bar-wrapper {
@@ -941,6 +965,7 @@ img {
   align-items: center;
   height: 100%;
   position: relative;
+  min-width: 0;
 }
 
 .bar-value {
@@ -966,10 +991,13 @@ img {
   font-size: 11px;
   color: #3a6ea5;
   text-align: center;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 100%;
+  line-height: 1.2;
 }
 
 .bar-color-1 {
@@ -998,6 +1026,9 @@ img {
   border-radius: 14px;
   border: 1px solid rgba(31, 120, 209, 0.24);
   background: linear-gradient(150deg, rgba(244, 251, 255, 0.96), rgba(230, 245, 255, 0.94));
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .picked-driver span {
@@ -1010,12 +1041,14 @@ img {
   margin-top: 4px;
   color: var(--text-main);
   font-size: 1.15rem;
+  overflow-wrap: anywhere;
 }
 
 .picked-driver p {
   margin: 6px 0 0;
   color: var(--text-muted);
   font-size: 0.86rem;
+  overflow-wrap: anywhere;
 }
 
 .primary-button {
@@ -1059,6 +1092,7 @@ img {
   margin-top: 16px;
   border-top: 1px solid rgba(125, 172, 218, 0.25);
   padding-top: 12px;
+  min-width: 0;
 }
 
 .api-note h3 {
