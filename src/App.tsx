@@ -522,38 +522,6 @@ const App = () => {
         </section>
 
         <aside className="side-panel">
-          <section className="chart-card" style={{ marginBottom: '1.5rem', background: '#fff', borderRadius: '12px', padding: '1.5rem', boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
-            <header className="section-header compact" style={{ borderBottom: '1px solid #ebebeb', paddingBottom: '0.5rem' }}>
-              <h2 style={{ fontSize: '1.25rem', color: '#333' }}>🎟️ 当前抽奖名单</h2>
-            </header>
-            <div style={{ textAlign: 'center', padding: '1.5rem 0' }}>
-              {(voteSettings.lotteryWinners && voteSettings.lotteryWinners.length > 0) ? (
-                <>
-                  <p style={{ fontSize: '1rem', color: '#666', marginBottom: '1rem' }}>
-                    恭喜以下 {voteSettings.lotteryWinners.length} 位中奖：
-                  </p>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '10px' }}>
-                    {voteSettings.lotteryWinners.map((winnerId, idx) => (
-                      <strong key={idx} style={{ 
-                        fontSize: '1.4rem', 
-                        color: '#fff', 
-                        background: '#d32f2f',
-                        padding: '8px 16px',
-                        borderRadius: '8px',
-                        letterSpacing: '1px',
-                        display: 'inline-block'
-                      }}>
-                        {winnerId}
-                      </strong>
-                    ))}
-                  </div>
-                </>
-              ) : (
-                <p style={{ fontSize: '1rem', color: '#999' }}>等待后台开启抽签中...</p>
-              )}
-            </div>
-          </section>
-
           <section className="chart-card">
             <header className="section-header compact">
               <h2>实时榜单</h2>
@@ -686,12 +654,12 @@ const App = () => {
             请输入学号
           </h3>
           <p style={{
-            margin: '0 0 20px',
+             margin: '0 0 20px',
             fontSize: '0.9rem',
             color: '#4e7399',
             textAlign: 'center'
           }}>
-            用于抽奖验证，请输入您的学号
+            用于投票身份验证，请输入您的学号
           </p>
 
           <input

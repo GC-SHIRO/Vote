@@ -191,6 +191,11 @@ body::after {
 body {
   margin: 0;
   min-width: 320px;
+  overflow-x: hidden;
+}
+
+html {
+  overflow-x: hidden;
 }
 
 button,
@@ -211,7 +216,6 @@ img {
   animation: fade-up 0.55s ease-out both;
   position: relative;
   isolation: isolate;
-  overflow-x: hidden;
 }
 
 .logo-intro {
