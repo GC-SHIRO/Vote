@@ -47,7 +47,8 @@ const schemaStatements = [
     user_agent VARCHAR(255) NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE KEY uniq_vote_id (vote_id),
-    UNIQUE KEY uniq_event_voter (event_id, voter_token),
+    UNIQUE KEY uniq_event_voter_candidate (event_id, voter_token, candidate_id),
+    UNIQUE KEY uniq_event_student_id (event_id, student_id),
     KEY idx_event_candidate (event_id, candidate_id),
     KEY idx_vote_created_at (created_at)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -87,53 +88,103 @@ const ensureUniqueIndex = async (tableName, indexName, columns) => {
 const seedCandidates = [
   {
     candidateCode: "singer-01",
-    candidateName: "林沐",
-    academy: "信息工程学院",
-    majorName: "软件工程",
-    songName: "夜空中最亮的星",
+    candidateName: "胡宇佳",
+    academy: "音乐学院",
+    majorName: "音乐表演",
+    songName: "待定",
     avatarUrl:
-      "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=600&q=80",
+      "https://i.imgs.ovh/2026/04/10/Zo4Nre.png",
     displayOrder: 1
   },
   {
     candidateCode: "singer-02",
-    candidateName: "周屿",
-    academy: "经济管理学院",
-    majorName: "金融学",
-    songName: "平凡之路",
+    candidateName: "吕梦绮",
+    academy: "音乐学院",
+    majorName: "音乐表演",
+    songName: "待定",
     avatarUrl:
-      "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=600&q=80",
+      "https://i.imgs.ovh/2026/04/10/Zo4Nre.png",
     displayOrder: 2
   },
   {
     candidateCode: "singer-03",
-    candidateName: "陈夏",
-    academy: "外国语学院",
+    candidateName: "陈汝子良 安佳铭扬",
+    academy: "外国语学院 药学院",
     majorName: "英语",
-    songName: "后来",
+    songName: "待定",
     avatarUrl:
-      "https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?auto=format&fit=crop&w=600&q=80",
+      "https://i.imgs.ovh/2026/04/10/Zo4Nre.png",
     displayOrder: 3
   },
   {
     candidateCode: "singer-04",
-    candidateName: "许舟",
-    academy: "土木工程学院",
-    majorName: "建筑学",
-    songName: "海阔天空",
+    candidateName: "钟小亮",
+    academy: "工程物理学院",
+    majorName: "智能感知",
+    songName: "待定",
     avatarUrl:
-      "https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=600&q=80",
+      "https://i.imgs.ovh/2026/04/10/Zo4Nre.png",
     displayOrder: 4
   },
   {
     candidateCode: "singer-05",
-    candidateName: "沈知遥",
-    academy: "艺术学院",
-    majorName: "音乐表演",
-    songName: "这世界那么多人",
+    candidateName: "于文庆",
+    academy: "新材料与新能源学院",
+    majorName: "材料科学与工程",
+    songName: "待定",
     avatarUrl:
-      "https://images.unsplash.com/photo-1517841905240-472988babdf9?auto=format&fit=crop&w=600&q=80",
+      "https://i.imgs.ovh/2026/04/10/Zo4Nre.png",
     displayOrder: 5
+  },
+  {
+    candidateCode: "singer-06",
+    candidateName: "余一言",
+    academy: "音乐学院",
+    majorName: "音乐表演",
+    songName: "待定",
+    avatarUrl:
+      "https://i.imgs.ovh/2026/04/10/Zo4Nre.png",
+    displayOrder: 6
+  },
+  {
+    candidateCode: "singer-07",
+    candidateName: "王小涵",
+    academy: "健康与环境工程学院",
+    majorName: "环境科学与工程",
+    songName: "待定",
+    avatarUrl:
+      "https://i.imgs.ovh/2026/04/10/Zo4Nre.png",
+    displayOrder: 7
+  },
+  {
+    candidateCode: "singer-08",
+    candidateName: "麦宝宁",
+    academy: "中德智能制造学院",
+    majorName: "机器人工程",
+    songName: "待定",
+    avatarUrl:
+      "https://i.imgs.ovh/2026/04/10/Zo4Nre.png",
+    displayOrder: 8
+  },
+  {
+    candidateCode: "singer-09",
+    candidateName: "吴润槟",
+    academy: "音乐学院",
+    majorName: "音乐表演",
+    songName: "待定",
+    avatarUrl:
+      "https://i.imgs.ovh/2026/04/10/Zo4Nre.png",
+    displayOrder: 9
+  },
+  {
+    candidateCode: "singer-10",
+    candidateName: "张晨阳",
+    academy: "健康与环境工程学院",
+    majorName: "环境科学与工程",
+    songName: "待定",
+    avatarUrl:
+      "https://i.img.ovh/2026/04/10/Zo4Nre.png",
+    displayOrder: 10
   }
 ];
 

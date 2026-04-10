@@ -376,16 +376,16 @@ app.post("/api/v1/votes", async (request, response) => {
   const candidateCodes = normalizeCandidateCodes(request.body ?? {});
   const resolvedEventId = resolveEventCode(eventId);
 
-  if (!voterToken || candidateCodes.length === 0 || !studentId) {
+  if (!voterToken || candidateCodes.length === 0) {
     response.status(400).json({
       success: false,
-      message: "请求参数不完整（缺少选手或学号等），请刷新后重试",
+      message: "请求参数不完整（缺少选手等），请刷新后重试",
       code: "INVALID_PARAM"
     });
     return;
   }
 
-  if (!/^202[0-5]\d{8}$/.test(studentId) || studentId.length !== 12) {
+  if (studentId && (!/^202[0-5]\d{8}$/.test(studentId) || studentId.length !== 12)) {
     response.status(400).json({
       success: false,
       message: "输入学号不正确",
@@ -442,10 +442,27 @@ app.post("/api/v1/votes", async (request, response) => {
     return;
   }
 
+  // Check if student_id already voted in this event (if student_id is provided)
+  if (studentId) {
+    const existingStudentVote = await query(
+      `SELECT id FROM vote_record WHERE event_id = ? AND student_id = ? LIMIT 1`,
+      [event.id, studentId]
+    );
+    if (existingStudentVote.length > 0) {
+      return response.status(409).json({
+        success: false,
+        message: "该学号已参与本次投票，每位学生只能投票一次",
+        code: "ALREADY_VOTED_STUDENT"
+      });
+    }
+  }
+
   try {
     const insertedVoteIds = await withTransaction(async (connection) => {
+      // Use FOR UPDATE to lock existing rows for this voter, preventing concurrent inserts
+      // This makes the check-and-insert atomic within the transaction
       const [voteRows] = await connection.execute(
-        `SELECT candidate_id FROM vote_record WHERE event_id = ? AND voter_token = ?`,
+        `SELECT candidate_id FROM vote_record WHERE event_id = ? AND voter_token = ? FOR UPDATE`,
         [event.id, voterToken]
       );
 
@@ -540,10 +557,28 @@ app.post("/api/v1/votes", async (request, response) => {
     }
 
     if (error?.code === "DUPLICATED_CANDIDATE" || error?.code === "ER_DUP_ENTRY" || error?.errno === 1062) {
+      // Check if the duplicate is for student_id
+      if (error?.sqlMessage?.includes('uniq_event_student_id')) {
+        response.status(409).json({
+          success: false,
+          message: "该学号已参与本次投票，每位学生只能投票一次",
+          code: "ALREADY_VOTED_STUDENT"
+        });
+      } else {
+        response.status(409).json({
+          success: false,
+          message: "存在重复投票记录或已超过最大选择数",
+          code: "ALREADY_VOTED_CANDIDATE"
+        });
+      }
+      return;
+    }
+
+    if (error?.code === "ALREADY_VOTED_STUDENT") {
       response.status(409).json({
         success: false,
-        message: "存在重复投票记录",
-        code: "ALREADY_VOTED_CANDIDATE"
+        message: "该学号已参与本次投票，每位学生只能投票一次",
+        code: "ALREADY_VOTED_STUDENT"
       });
       return;
     }

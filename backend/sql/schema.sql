@@ -43,6 +43,7 @@ CREATE TABLE IF NOT EXISTS vote_record (
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY uniq_vote_id (vote_id),
   UNIQUE KEY uniq_event_voter_candidate (event_id, voter_token, candidate_id),
+  UNIQUE KEY uniq_event_student_id (event_id, student_id),
   KEY idx_event_candidate (event_id, candidate_id),
   KEY idx_vote_created_at (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
