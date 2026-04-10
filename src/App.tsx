@@ -320,8 +320,8 @@ const App = () => {
 
   const validateAndSubmitVote = async () => {
     const trimmed = studentIdInput.trim();
-    if (!/^202[0-5]\d{8}$/.test(trimmed) || trimmed.length !== 12) {
-      setStudentIdError("请输入12位有效学号（2020-2025开头）");
+    if (!(/^202[0-5]\d{8}$/.test(trimmed) || /^\d{5}$/.test(trimmed) || /^\d{8}$/.test(trimmed))) {
+      setStudentIdError("请输入正确的学号 (5位/8位/12位)");
       return;
     }
 
@@ -707,7 +707,7 @@ const App = () => {
             color: '#4e7399',
             textAlign: 'center'
           }}>
-            用于抽奖验证，请输入12位学号
+            用于抽奖验证，请输入您的学号
           </p>
 
           <input
@@ -715,13 +715,13 @@ const App = () => {
             inputMode="numeric"
             pattern="[0-9]*"
             maxLength={12}
-            placeholder="202xxxxxxxxx"
+            placeholder="5位/8位/12位学号"
             value={studentIdInput}
             onChange={(e) => {
               const val = e.target.value.replace(/\D/g, '').slice(0, 12);
               setStudentIdInput(val);
               if (val.length === 12 && !/^202[0-5]/.test(val)) {
-                setStudentIdError("学号应以2020-2025开头");
+                setStudentIdError("12位学号应以2020-2025开头");
               } else {
                 setStudentIdError("");
               }

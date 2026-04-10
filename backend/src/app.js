@@ -385,10 +385,11 @@ app.post("/api/v1/votes", async (request, response) => {
     return;
   }
 
-  if (studentId && (!/^202[0-5]\d{8}$/.test(studentId) || studentId.length !== 12)) {
+  // 检查学号格式：如果是12位则需校验前4位(2020-2025)，如果是5位或8位则仅校验数字，否则提示错误
+  if (studentId && !(/^202[0-5]\d{8}$/.test(studentId) || /^\d{5}$/.test(studentId) || /^\d{8}$/.test(studentId))) {
     response.status(400).json({
       success: false,
-      message: "输入学号不正确",
+      message: "输入学号不正确或格式无效",
       code: "INVALID_STUDENT_ID"
     });
     return;
