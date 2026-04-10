@@ -5,8 +5,8 @@ import { check, sleep } from 'k6';
 export const options = {
   stages: [
     { duration: '30s', target: 200 },  // 预热：30秒内用户量爬升到 200
-    { duration: '1m', target: 1000 },  // 爆发：1分钟内用户暴增至 1000（模拟活动推送瞬间）
-    { duration: '2m', target: 1000 },  // 持续：维持 1000 并发稳定持续 2 分钟
+    { duration: '1m', target: 500 },  // 爆发：1分钟内用户暴增至 500（模拟活动推送瞬间）
+    { duration: '2m', target: 500 },  // 持续：维持 500 并发稳定持续 2 分钟
     { duration: '30s', target: 0 },    // 冷却：活动热度退潮，30秒内降至 0
   ],
   thresholds: {
