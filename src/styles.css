@@ -687,11 +687,7 @@ img {
   animation-delay: 0.32s;
 }
 
-.candidate-card:hover {
-  border-color: rgba(31, 120, 209, 0.56);
-  box-shadow: 0 16px 26px rgba(31, 120, 209, 0.14);
-  transform: translateY(-2px);
-}
+
 
 .candidate-card.is-active {
   border-color: rgba(31, 120, 209, 0.8);
@@ -942,9 +938,7 @@ img {
   margin-top: auto;
 }
 
-.bar:hover {
-  opacity: 0.85;
-}
+
 
 .bar-label {
   margin-top: 6px;
@@ -1018,10 +1012,7 @@ img {
   transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
 }
 
-.primary-button:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 24px rgba(27, 108, 188, 0.32), inset 0 1px 0 rgba(255, 255, 255, 0.36);
-}
+
 
 .primary-button:disabled {
   opacity: 0.62;

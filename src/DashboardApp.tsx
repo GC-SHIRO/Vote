@@ -287,6 +287,7 @@ const DashboardApp = () => {
   const [title, setTitle] = useState(defaultVoteSettings.title);
   const prevVoteMap = useRef<Record<string, number>>({});
   const prevCandidatesRef = useRef<RankedCandidate[]>([]);
+  const prevLotteryWinnersStrRef = useRef<string>("[]");
   const hasRecentActivity = useRef(false);
   const lotteryScrollRef = useRef<HTMLDivElement | null>(null);
 
@@ -309,17 +310,22 @@ const DashboardApp = () => {
         if (config.status !== status) setStatus(config.status);
 
         const sorted = [...config.candidates].sort((a, b) => b.voteCount - a.voteCount);
+        const newWinnersStr = JSON.stringify(config.lotteryWinners ?? []);
+        
+        const isCandidatesChanged = hasDataChanged(prevCandidatesRef.current, sorted);
+        const isLotteryChanged = newWinnersStr !== prevLotteryWinnersStrRef.current;
 
         // Skip state update if nothing changed
-        if (!hasDataChanged(prevCandidatesRef.current, sorted)) {
+        if (!isCandidatesChanged && !isLotteryChanged) {
           hasRecentActivity.current = false;
           return;
         }
 
         hasRecentActivity.current = true;
 
-        setCandidates((prev) => {
-          const prevMap = new Map(prev.map((c) => [c.id, c]));
+        if (isCandidatesChanged) {
+          setCandidates((prev) => {
+            const prevMap = new Map(prev.map((c) => [c.id, c]));
           const prevVotes = prevVoteMap.current;
 
           const ranked = sorted.map((candidate, index) => {
@@ -345,14 +351,17 @@ const DashboardApp = () => {
 
           return ranked;
         });
+        } // close if (isCandidatesChanged)
 
-        const newWinners = config.lotteryWinners ?? [];
-        setLotteryWinners((prev) => {
-          const isSameList =
-            prev.length === newWinners.length && prev.every((id, i) => id === newWinners[i]);
-          if (isSameList) {
-            return prev;
-          }
+        if (isLotteryChanged) {
+          prevLotteryWinnersStrRef.current = newWinnersStr;
+          const newWinners = config.lotteryWinners ?? [];
+          setLotteryWinners((prev) => {
+            const isSameList =
+              prev.length === newWinners.length && prev.every((id, i) => id === newWinners[i]);
+            if (isSameList) {
+              return prev;
+            }
 
           if (newWinners.length === 0) {
             setLotteryQueue([]);
@@ -376,6 +385,7 @@ const DashboardApp = () => {
 
           return newWinners;
         });
+        } // close if (isLotteryChanged)
 
         setLastUpdate(new Date().toLocaleTimeString("zh-CN"));
       } catch {
