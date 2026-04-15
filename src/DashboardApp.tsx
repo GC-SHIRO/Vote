@@ -2,8 +2,8 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState, type RefObject
 import { fetchEventConfig, RUNTIME_EVENT_ID } from "./api";
 import { defaultVoteSettings } from "./data";
 import type { RankedCandidate } from "./types";
-import appLogo from "./img/logo.png";
-import appText from "./img/文字.png";
+// import appLogo from "./img/logo.png";
+// import appText from "./img/文字.png";
 
 const FAST_POLL_MS = 2000;
 const SLOW_POLL_MS = 5000;
