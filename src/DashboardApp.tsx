@@ -195,6 +195,26 @@ const VotePieChart = memo(function VotePieChart({
   );
 });
 
+function ScrambleNumber({ targetText, isScrambling }: { targetText: string, isScrambling: boolean }) {
+  const [displayText, setDisplayText] = useState(targetText);
+
+  useEffect(() => {
+    if (!isScrambling) {
+      setDisplayText(targetText);
+      return;
+    }
+
+    const intervalId = setInterval(() => {
+      const randomNum = Math.floor(Math.random() * 800) + 1;
+      setDisplayText(String(randomNum));
+    }, 50); // Scramble every 50ms
+
+    return () => clearInterval(intervalId);
+  }, [targetText, isScrambling]);
+
+  return <>{displayText}</>;
+}
+
 const LotterySection = memo(function LotterySection({
   currentScrollWinner,
   displayList,
@@ -242,7 +262,13 @@ const LotterySection = memo(function LotterySection({
                     className={`lottery-item${isCurrent ? " lottery-current" : ""}`}
                   >
                     <span className="lottery-item-index">{String(index + 1).padStart(2, "0")}</span>
-                    <span className="lottery-item-id">{winner}</span>
+                    <span className="lottery-item-id">
+                      {isCurrent ? (
+                        <ScrambleNumber targetText={winner} isScrambling={true} />
+                      ) : (
+                        winner
+                      )}
+                    </span>
                   </div>
                 );
               })}

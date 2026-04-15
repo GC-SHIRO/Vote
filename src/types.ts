@@ -28,7 +28,6 @@ export type VoteSettings = {
   lotteryWinners?: string[]; // 当前显示的中奖学号列表
   lotteryWinnerList?: LotteryWinner[]; // 详细中奖列表
   lotteryDrawCount?: number; // 每次抽奖人数
-  useReservedIds?: boolean;
   candidates: Candidate[];
 };
 
@@ -91,7 +90,6 @@ export type AdminConfig = {
   lotteryWinners: string[]; // 当前显示的中奖学号
   lotteryWinnerList: AdminLotteryWinner[]; // 所有中奖历史
   lotteryDrawCount: number; // 每次抽奖人数设置
-  useReservedIds: boolean;
   startTime: string | null;
   endTime: string | null;
   candidates: AdminCandidate[];

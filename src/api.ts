@@ -513,7 +513,6 @@ export const updateAdminConfig = async (payload: {
   selectionMode: "single" | "multi";
   maxSelections: number;
   lotteryDrawCount?: number;
-  useReservedIds?: boolean;
   startTime?: string | null;
   endTime?: string | null;
   controlAction?: "start_now" | "stop_now" | "none";

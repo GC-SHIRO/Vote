@@ -90,7 +90,6 @@ const AdminApp = () => {
   const [lotteryWinners, setLotteryWinners] = useState<string[]>([]);
   const [lotteryWinnerList, setLotteryWinnerList] = useState<Array<{studentId: string; round: number; isDisplayed: boolean; createdAt?: string}>>([]);
   const [lotteryDrawCount, setLotteryDrawCount] = useState(1);
-  const [useReservedIds, setUseReservedIds] = useState(false);
 
   const [candidates, setCandidates] = useState<CandidateDraft[]>([]);
   const [newCandidate, setNewCandidate] = useState<CandidateDraft>(emptyCandidate);
@@ -113,7 +112,6 @@ const AdminApp = () => {
       setLotteryWinners(config.lotteryWinners || []);
       setLotteryWinnerList(config.lotteryWinnerList || []);
       setLotteryDrawCount(config.lotteryDrawCount || 1);
-      setUseReservedIds(config.useReservedIds);
       setStartTime(toDateTimeLocalValue(config.startTime));
       setEndTime(toDateTimeLocalValue(config.endTime));
       setCandidates(config.candidates.map(toDraft));
@@ -160,7 +158,6 @@ const AdminApp = () => {
         selectionMode,
         maxSelections: selectionMode === "single" ? 1 : maxSelections,
         lotteryDrawCount: Math.max(1, Math.min(50, lotteryDrawCount)),
-        useReservedIds,
         resultVisible,
         startTime: fromDateTimeLocalValue(startTime),
         endTime: fromDateTimeLocalValue(endTime),
@@ -242,11 +239,6 @@ const AdminApp = () => {
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "清空投票请求失败");
     }
-  };
-
-  const handleToggleReservedIds = async (nextValue: boolean) => {
-    setUseReservedIds(nextValue);
-    setMessage("预留号配置已更新，点击保存配置以生效");
   };
 
   const onUploadAvatar = async (file: File, targetId: string) => {
@@ -477,15 +469,6 @@ const AdminApp = () => {
         <article className="admin-card">
           <h2>抽奖管理</h2>
           <div className="form-grid">
-            <label className="switch-row">
-              <input
-                type="checkbox"
-                checked={useReservedIds}
-                onChange={(event) => handleToggleReservedIds(event.target.checked)}
-              />
-              使用预留号池 (202400000001 - 202400000020)
-            </label>
-            
             <label>
               每次抽奖人数
               <input

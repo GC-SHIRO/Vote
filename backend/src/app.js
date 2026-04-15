@@ -712,7 +712,6 @@ app.put("/api/v1/admin/config", requireAdminAuth, async (request, response) => {
     selectionMode,
     maxSelections,
     lotteryDrawCount,
-    useReservedIds,
     startTime,
     endTime,
     controlAction
@@ -747,9 +746,6 @@ app.put("/api/v1/admin/config", requireAdminAuth, async (request, response) => {
     }
 
     const currentRule = parseRule(event.rule_json);
-    console.log("[Debug] Save config - body useReservedIds:", useReservedIds, "type:", typeof useReservedIds);
-    const nextUseReservedIds = typeof useReservedIds === 'boolean' ? useReservedIds : currentRule.useReservedIds;
-    console.log("[Debug] Save config - nextUseReservedIds:", nextUseReservedIds, "currentRule:", currentRule.useReservedIds);
     await query(
       `
       UPDATE vote_event
@@ -758,7 +754,7 @@ app.put("/api/v1/admin/config", requireAdminAuth, async (request, response) => {
         result_visible = ?,
         start_time = ?,
         end_time = ?,
-        rule_json = JSON_OBJECT('mode', ?, 'maxSelections', ?, 'lotteryDrawCount', ?, 'useReservedIds', ?),
+        rule_json = JSON_OBJECT('mode', ?, 'maxSelections', ?, 'lotteryDrawCount', ?, 'useReservedIds', false),
         updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
       `,
@@ -770,7 +766,6 @@ app.put("/api/v1/admin/config", requireAdminAuth, async (request, response) => {
         nextMode,
         nextMode === "single" ? 1 : nextMax,
         nextLotteryDrawCount,
-        nextUseReservedIds ? 1 : 0,
         event.id
       ]
     );
@@ -1039,33 +1034,22 @@ app.post("/api/v1/admin/lottery/draw", requireAdminAuth, async (request, respons
 
     let winners = [];
 
-    if (rule.useReservedIds) {
-      // 预留号池模式：从 202400000001-202400000020 中随机抽取
-      const min = 202400000001;
-      const max = 202400000020;
-      const usedReserved = new Set();
-      
-      while (winners.length < actualDrawCount && usedReserved.size < 20) {
-        const candidate = String(Math.floor(Math.random() * (max - min + 1)) + min);
-        if (!usedReserved.has(candidate)) {
-          usedReserved.add(candidate);
-          winners.push(candidate);
-        }
+    // 获取已经中过奖的号码
+    const drawnRows = await query(`SELECT student_id FROM lottery_winner WHERE event_id = ?`, [event.id]);
+    const drawnNumbers = new Set(drawnRows.map(r => parseInt(r.student_id, 10)));
+    
+    // 生成新的随机数 (1-800) 且不重复
+    const maxNumber = 800;
+    while (winners.length < actualDrawCount && drawnNumbers.size < maxNumber) {
+      const candidate = Math.floor(Math.random() * maxNumber) + 1;
+      if (!drawnNumbers.has(candidate)) {
+        drawnNumbers.add(candidate);
+        winners.push(String(candidate));
       }
-    } else {
-      // 真实投票用户模式
-      // 注意：LIMIT 后面不能直接跟 ? 参数，需要字符串拼接（actualDrawCount 已限制 1-50，安全）
-      const rows = await query(
-        `SELECT student_id FROM vote_record 
-         WHERE event_id = ? AND student_id IS NOT NULL AND student_id != '' 
-         ORDER BY RAND() LIMIT ${actualDrawCount}`,
-        [event.id]
-      );
-      winners = rows.map(r => r.student_id).filter(Boolean);
     }
 
     if (winners.length === 0) {
-      return response.status(400).json({ success: false, message: "当前活动暂无有效的投票学号可供抽奖" });
+      return response.status(400).json({ success: false, message: "所有号码均已中奖，无法继续抽奖" });
     }
 
     // 将之前的显示状态设为 0（隐藏）
@@ -1112,11 +1096,6 @@ app.post("/api/v1/admin/lottery/reset", requireAdminAuth, async (request, respon
 
     const rule = parseRule(event.rule_json);
     const resetType = request.body?.type || 'display'; // 'display' | 'all'
-    
-    // Toggle reserved ID config or just reset
-    const useReservedIds = typeof request.body?.useReservedIds === 'boolean' 
-      ? request.body.useReservedIds 
-      : rule.useReservedIds;
 
     // 检查表是否存在
     try {
