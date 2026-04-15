@@ -1,3 +1,12 @@
+:root {
+  /* ================= 大屏布局手动调节区 ================= */
+  --bg-stretch: cover; /* 【重要】如果你想让背景图强制拉伸/压缩来完美贴合屏幕（不被裁剪），请改为 100% 100% */
+  --pad-side: 5%;      /* 左右两侧缩进去的比例，想要更窄就调大，比如 8% */
+  --pad-bottom: 3vh;   /* 底部安全距离，想要离底下自带的框更近，可以调小比如 1vh 或者 0px */
+  --head-mt: 50px;     /* 顶部状态栏向下压的距离，越大越往下 */
+  /* ======================================================= */
+}
+
 /* HarmonyOS Sans SC */
 @font-face {
   font-family: "HarmonyOS Sans SC";
@@ -20,12 +29,12 @@
 .dashboard-page {
   height: 100vh;
   background-image: url('./img/背景.png');
-  background-size: cover;
+  background-size: var(--bg-stretch);
   background-position: center;
   background-repeat: no-repeat;
   color: #0b213f;
   font-family: "HarmonyOS Sans SC", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
-  padding: 16px 5% 3vh; /* 第三个值控制底部留白，现在设为 3vh */
+  padding: 16px var(--pad-side) var(--pad-bottom); /* 分左右和底部的预设变量 */
   box-sizing: border-box;
   overflow: hidden;
   position: relative;
@@ -144,7 +153,7 @@
   align-items: center;
   justify-content: flex-end;
   gap: 16px;
-  margin-top: 50px;
+  margin-top: var(--head-mt);
   margin-bottom: 16px;
   padding-bottom: 12px;
   border-bottom: 2px solid rgba(123, 170, 219, 0.28);
@@ -286,7 +295,7 @@
 .dashboard-body {
   display: flex;
   gap: 16px;
-  height: calc(100vh - 3vh - 180px); /* 保持与 .dashboard-page 的底部 padding（3vh）同步 */
+  height: calc(100vh - var(--pad-bottom) - var(--head-mt) - 130px); /* 自动基于头部距离、底部留白和自身补边进行计算减免 */
   min-height: 0;
 }
 
