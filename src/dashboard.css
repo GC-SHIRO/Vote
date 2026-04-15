@@ -286,8 +286,9 @@
 .dashboard-body {
   display: flex;
   gap: 16px;
-  height: calc(100vh - 128px);
+  height: calc(100vh - 180px); /* adjusted for global header margins */
   min-height: 0;
+  zoom: 0.92;
 }
 
 @media (max-height: 700px) {
