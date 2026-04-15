@@ -497,9 +497,6 @@ const DashboardApp = () => {
       <div className="particle-fx" style={{ width: '9px', height: '9px', left: '90%', animationDuration: '22s', animationDelay: '10s' }} aria-hidden="true" />
 
       <header className="dashboard-header">
-        <img src={appLogo} alt="学生社团管理中心" className="dashboard-logo" />
-        <img src={appText} alt="学生社团管理中心" className="dashboard-text" />
-        <h1 className="dashboard-title">{title} · 实时看板</h1>
         <div className="dashboard-status">
           <span className={`status-badge ${status}`} role="status">
             <span className={`status-dot ${status}`} aria-hidden="true" />
