@@ -195,22 +195,30 @@ const VotePieChart = memo(function VotePieChart({
   );
 });
 
-function ScrambleNumber({ targetText, isScrambling }: { targetText: string, isScrambling: boolean }) {
-  const [displayText, setDisplayText] = useState(targetText);
+function ScrambleNumber({ targetText, duration = 1000 }: { targetText: string, duration?: number }) {
+  const [displayText, setDisplayText] = useState(() => String(Math.floor(Math.random() * 800) + 1).padStart(3, "0"));
+  const [isScrambling, setIsScrambling] = useState(true);
 
   useEffect(() => {
-    if (!isScrambling) {
+    setIsScrambling(true);
+    const stopTimer = setTimeout(() => {
+      setIsScrambling(false);
       setDisplayText(targetText);
-      return;
-    }
+    }, duration);
+
+    return () => clearTimeout(stopTimer);
+  }, [targetText, duration]);
+
+  useEffect(() => {
+    if (!isScrambling) return;
 
     const intervalId = setInterval(() => {
       const randomNum = Math.floor(Math.random() * 800) + 1;
-      setDisplayText(String(randomNum));
+      setDisplayText(String(randomNum).padStart(3, "0"));
     }, 50); // Scramble every 50ms
 
     return () => clearInterval(intervalId);
-  }, [targetText, isScrambling]);
+  }, [isScrambling]);
 
   return <>{displayText}</>;
 }
@@ -264,9 +272,9 @@ const LotterySection = memo(function LotterySection({
                     <span className="lottery-item-index">{String(index + 1).padStart(2, "0")}</span>
                     <span className="lottery-item-id">
                       {isCurrent ? (
-                        <ScrambleNumber targetText={winner} isScrambling={true} />
+                        <ScrambleNumber targetText={winner.padStart(3, "0")} duration={1000} />
                       ) : (
-                        winner
+                        winner.padStart(3, "0")
                       )}
                     </span>
                   </div>
