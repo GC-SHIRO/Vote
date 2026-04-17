@@ -7,7 +7,7 @@ import type { RankedCandidate } from "./types";
 
 const FAST_POLL_MS = 2000;
 const SLOW_POLL_MS = 5000;
-const LOTTERY_SCROLL_MS = 1500;
+const LOTTERY_REVEAL_MS = 2000;
 
 const RankCard = memo(function RankCard({ candidate }: { candidate: RankedCandidate }) {
   const animClass = candidate.rankChanged
@@ -272,7 +272,7 @@ const LotterySection = memo(function LotterySection({
                     <span className="lottery-item-index">{String(index + 1).padStart(2, "0")}</span>
                     <span className="lottery-item-id">
                       {isCurrent ? (
-                        <ScrambleNumber targetText={winner.padStart(3, "0")} duration={2000} />
+                         <ScrambleNumber targetText={winner.padStart(3, "0")} duration={LOTTERY_REVEAL_MS} />
                       ) : (
                         winner.padStart(3, "0")
                       )}
@@ -445,10 +445,11 @@ const DashboardApp = () => {
     };
   }, []);
 
-  // Scroll lottery queue one by one
+  // Keep queue advance aligned with the scramble duration so each number settles
+  // before the next winner starts revealing.
   useEffect(() => {
     if (lotteryQueue.length === 0) return;
-    const timer = setTimeout(tickLottery, LOTTERY_SCROLL_MS);
+    const timer = setTimeout(tickLottery, LOTTERY_REVEAL_MS);
     return () => clearTimeout(timer);
   }, [lotteryQueue, tickLottery]);
 
