@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { fetchEventConfig, RUNTIME_EVENT_ID } from "./api";
 import { defaultVoteSettings } from "./data";
 import type { RankedCandidate } from "./types";
@@ -7,8 +7,6 @@ import type { RankedCandidate } from "./types";
 
 const FAST_POLL_MS = 2000;
 const SLOW_POLL_MS = 5000;
-const LOTTERY_REVEAL_MS = 2000;
-const LOTTERY_SCRAMBLE_STEP_MS = 90;
 
 const RankCard = memo(function RankCard({ candidate }: { candidate: RankedCandidate }) {
   const animClass = candidate.rankChanged
@@ -196,112 +194,6 @@ const VotePieChart = memo(function VotePieChart({
   );
 });
 
-function ScrambleNumber({ targetText, duration = 1000 }: { targetText: string, duration?: number }) {
-  const [displayText, setDisplayText] = useState(() => String(Math.floor(Math.random() * 800) + 1).padStart(3, "0"));
-  const [isScrambling, setIsScrambling] = useState(true);
-
-  useEffect(() => {
-    setIsScrambling(true);
-    setDisplayText(String(Math.floor(Math.random() * 800) + 1).padStart(3, "0"));
-
-    const stopTimer = setTimeout(() => {
-      setIsScrambling(false);
-      setDisplayText(targetText);
-    }, duration);
-
-    return () => clearTimeout(stopTimer);
-  }, [targetText, duration]);
-
-  useEffect(() => {
-    if (!isScrambling) return;
-
-    const intervalId = setInterval(() => {
-      const randomNum = Math.floor(Math.random() * 800) + 1;
-      setDisplayText(String(randomNum).padStart(3, "0"));
-    }, LOTTERY_SCRAMBLE_STEP_MS);
-
-    return () => clearInterval(intervalId);
-  }, [isScrambling]);
-
-  return <>{displayText}</>;
-}
-
-const LotterySection = memo(function LotterySection({
-  currentScrollWinner,
-  displayList,
-  totalWinners,
-  currentRevealIndex,
-  scrollAreaRef
-}: {
-  currentScrollWinner: string | null;
-  displayList: string[];
-  totalWinners: number;
-  currentRevealIndex: number;
-  scrollAreaRef: RefObject<HTMLDivElement | null>;
-}) {
-  const revealedCount = Math.min(displayList.length, totalWinners);
-
-  return (
-    <section className="dashboard-section lottery-section" aria-live="polite">
-      <h2 className="section-title">
-        抽奖学号
-        {totalWinners > 0 && (
-          <span className="lottery-count">
-            已揭晓 {revealedCount} / {totalWinners}
-          </span>
-        )}
-      </h2>
-
-      {totalWinners > 0 ? (
-        <div className="lottery-container">
-          <div className="lottery-stage-meta">
-            {currentScrollWinner ? (
-              <span className="lottery-stage-badge">本轮第 {currentRevealIndex} 位</span>
-            ) : (
-              <span className="lottery-stage-finish">本轮揭晓完成</span>
-            )}
-          </div>
-
-          <div className="lottery-scroll-mask" ref={scrollAreaRef}>
-            <div className="lottery-scroll-wrapper">
-              {displayList.map((winner, index) => {
-                const isCurrent = currentScrollWinner !== null && index === displayList.length - 1;
-
-                return (
-                  <div
-                    key={`${winner}-${index}`}
-                    className={`lottery-item${isCurrent ? " lottery-current" : ""}`}
-                  >
-                    <span className="lottery-item-index">{String(index + 1).padStart(2, "0")}</span>
-                    <span className="lottery-item-id">
-                      {isCurrent ? (
-                         <ScrambleNumber targetText={winner.padStart(3, "0")} duration={LOTTERY_REVEAL_MS} />
-                      ) : (
-                        winner.padStart(3, "0")
-                      )}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className="lottery-placeholder">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <rect x="3" y="8" width="18" height="12" rx="2" />
-            <path d="M12 8v12" />
-            <path d="M16 8c0-1.5-1-3-3-3s-3 1.5-3 3" />
-            <path d="M8 8c0-1.5 1-3 3-3s3 1.5 3 3" />
-          </svg>
-          <span className="lottery-placeholder-main">大奖揭晓，敬请期待</span>
-          <span className="lottery-placeholder-sub">正在等待管理员开启抽奖...</span>
-        </div>
-      )}
-    </section>
-  );
-});
-
 function hasDataChanged(
   prev: RankedCandidate[],
   next: Array<{ id: string; voteCount: number }>
@@ -316,22 +208,12 @@ function hasDataChanged(
 
 const DashboardApp = () => {
   const [candidates, setCandidates] = useState<RankedCandidate[]>([]);
-  const [lotteryWinners, setLotteryWinners] = useState<string[]>([]);
-  const [lotteryQueue, setLotteryQueue] = useState<string[]>([]);
-  const [currentLotteryIndex, setCurrentLotteryIndex] = useState(0);
   const [status, setStatus] = useState<"active" | "closed">("active");
   const [lastUpdate, setLastUpdate] = useState("");
   const [title, setTitle] = useState(defaultVoteSettings.title);
   const prevVoteMap = useRef<Record<string, number>>({});
   const prevCandidatesRef = useRef<RankedCandidate[]>([]);
-  const prevLotteryWinnersStrRef = useRef<string>("[]");
   const hasRecentActivity = useRef(false);
-  const lotteryScrollRef = useRef<HTMLDivElement | null>(null);
-
-  const tickLottery = useCallback(() => {
-    setLotteryQueue((prev) => prev.slice(1));
-    setCurrentLotteryIndex((prev) => prev + 1);
-  }, []);
 
   // Poll with adaptive interval
   useEffect(() => {
@@ -347,13 +229,10 @@ const DashboardApp = () => {
         if (config.status !== status) setStatus(config.status);
 
         const sorted = [...config.candidates].sort((a, b) => b.voteCount - a.voteCount);
-        const newWinnersStr = JSON.stringify(config.lotteryWinners ?? []);
-        
         const isCandidatesChanged = hasDataChanged(prevCandidatesRef.current, sorted);
-        const isLotteryChanged = newWinnersStr !== prevLotteryWinnersStrRef.current;
 
         // Skip state update if nothing changed
-        if (!isCandidatesChanged && !isLotteryChanged) {
+        if (!isCandidatesChanged) {
           hasRecentActivity.current = false;
           return;
         }
@@ -390,40 +269,6 @@ const DashboardApp = () => {
         });
         } // close if (isCandidatesChanged)
 
-        if (isLotteryChanged) {
-          prevLotteryWinnersStrRef.current = newWinnersStr;
-          const newWinners = config.lotteryWinners ?? [];
-          setLotteryWinners((prev) => {
-            const isSameList =
-              prev.length === newWinners.length && prev.every((id, i) => id === newWinners[i]);
-            if (isSameList) {
-              return prev;
-            }
-
-          if (newWinners.length === 0) {
-            setLotteryQueue([]);
-            setCurrentLotteryIndex(0);
-            return [];
-          }
-
-          const isAppendUpdate =
-            newWinners.length >= prev.length && prev.every((id, i) => id === newWinners[i]);
-
-          if (isAppendUpdate) {
-            const appended = newWinners.slice(prev.length);
-            if (appended.length > 0) {
-              setLotteryQueue((q) => [...q, ...appended]);
-            }
-          } else {
-            // A new draw round should replay reveal from the top.
-            setLotteryQueue([...newWinners]);
-            setCurrentLotteryIndex(0);
-          }
-
-          return newWinners;
-        });
-        } // close if (isLotteryChanged)
-
         setLastUpdate(new Date().toLocaleTimeString("zh-CN"));
       } catch {
         // silent on polling failures
@@ -448,14 +293,6 @@ const DashboardApp = () => {
     };
   }, []);
 
-  // Keep queue advance aligned with the scramble duration so each number settles
-  // before the next winner starts revealing.
-  useEffect(() => {
-    if (lotteryQueue.length === 0) return;
-    const timer = setTimeout(tickLottery, LOTTERY_REVEAL_MS);
-    return () => clearTimeout(timer);
-  }, [lotteryQueue, tickLottery]);
-
   const totalVotes = useMemo(
     () => candidates.reduce((sum, c) => sum + c.voteCount, 0),
     [candidates]
@@ -465,29 +302,6 @@ const DashboardApp = () => {
     () => Math.max(...candidates.map((c) => c.voteCount), 1),
     [candidates]
   );
-
-  const revealedWinners = useMemo(
-    () => lotteryWinners.slice(0, currentLotteryIndex),
-    [lotteryWinners, currentLotteryIndex]
-  );
-
-  const currentScrollWinner = lotteryQueue.length > 0 ? lotteryQueue[0] : null;
-
-  const lotteryDisplayList = useMemo(
-    () => (currentScrollWinner ? [...revealedWinners, currentScrollWinner] : revealedWinners),
-    [revealedWinners, currentScrollWinner]
-  );
-
-  const currentRevealIndex = useMemo(() => {
-    if (!currentScrollWinner) return 0;
-    return Math.min(revealedWinners.length + 1, lotteryWinners.length);
-  }, [currentScrollWinner, revealedWinners.length, lotteryWinners.length]);
-
-  useEffect(() => {
-    const node = lotteryScrollRef.current;
-    if (!node) return;
-    node.scrollTo({ top: node.scrollHeight, behavior: "auto" });
-  }, [lotteryDisplayList.length]);
 
   return (
     <main className="dashboard-page">
@@ -528,37 +342,27 @@ const DashboardApp = () => {
           </div>
         </section>
 
-        <div className="dashboard-right">
-          <section className="dashboard-section" aria-label="投票数据">
-            <h2 className="section-title">投票数据</h2>
-            <div className="dashboard-stats">
-              <div className="dashboard-stat-card">
-                <div className="stat-value">{totalVotes}</div>
-                <div className="stat-label">总票数</div>
-              </div>
-              <div className="dashboard-stat-card">
-                <div className="stat-value">{candidates.length}</div>
-                <div className="stat-label">候选人数</div>
-              </div>
-              <div className="dashboard-stat-card">
-                <div className="stat-value">{candidates[0]?.name ?? "--"}</div>
-                <div className="stat-label">当前领先</div>
-              </div>
+        <section className="dashboard-section dashboard-data-section" aria-label="投票数据">
+          <h2 className="section-title">投票数据</h2>
+          <div className="dashboard-stats">
+            <div className="dashboard-stat-card">
+              <div className="stat-value">{totalVotes}</div>
+              <div className="stat-label">总票数</div>
             </div>
-            <div className="dashboard-visuals">
-              <BarChart candidates={candidates} maxVotes={maxVotes} />
-              <VotePieChart candidates={candidates} totalVotes={totalVotes} />
+            <div className="dashboard-stat-card">
+              <div className="stat-value">{candidates.length}</div>
+              <div className="stat-label">候选人数</div>
             </div>
-          </section>
-
-          <LotterySection
-            currentScrollWinner={currentScrollWinner}
-            displayList={lotteryDisplayList}
-            totalWinners={lotteryWinners.length}
-            currentRevealIndex={currentRevealIndex}
-            scrollAreaRef={lotteryScrollRef}
-          />
-        </div>
+            <div className="dashboard-stat-card">
+              <div className="stat-value">{candidates[0]?.name ?? "--"}</div>
+              <div className="stat-label">当前领先</div>
+            </div>
+          </div>
+          <div className="dashboard-visuals">
+            <BarChart candidates={candidates} maxVotes={maxVotes} />
+            <VotePieChart candidates={candidates} totalVotes={totalVotes} />
+          </div>
+        </section>
       </div>
     </main>
   );
