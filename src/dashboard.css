@@ -546,9 +546,10 @@
   gap: 10px;
   height: 100%;
   min-height: 190px;
+  flex: 1;
   padding: 2px 4px 0;
   margin-top: 0;
-  flex-shrink: 0;
+  flex-shrink: 1;
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: thin;
@@ -678,18 +679,19 @@
 .dashboard-visuals {
   display: flex;
   flex: 1;
-  min-height: 200px;
+  min-height: 0;
+  align-items: stretch;
 }
 
 @media (max-width: 1200px) {
   .dashboard-visuals {
-    min-height: 180px;
+    min-height: 0;
   }
 }
 
 @media (max-width: 900px) {
   .dashboard-visuals {
-    min-height: 160px;
+    min-height: 0;
   }
 }
 
@@ -698,18 +700,18 @@
   align-items: center;
   justify-content: center;
   min-width: 0;
-  aspect-ratio: 1 / 1;
-  padding: 10px;
+  min-height: 108px;
+  max-height: 124px;
+  padding: 8px 10px;
   overflow: hidden;
   flex: 1;
 }
 
 .dashboard-pie-chart-wrap {
   position: relative;
-  width: 100%;
+  width: min(100%, 88px);
   aspect-ratio: 1 / 1;
   flex-shrink: 0;
-  max-width: 140px;
 }
 
 .dashboard-pie-chart {
@@ -734,15 +736,15 @@
 }
 
 .dashboard-pie-center strong {
-  font-size: 1.22rem;
+  font-size: 1rem;
   font-weight: 800;
   color: #173f69;
   line-height: 1;
 }
 
 .dashboard-pie-center span {
-  margin-top: 4px;
-  font-size: 0.7rem;
+  margin-top: 3px;
+  font-size: 0.62rem;
   color: #4e7399;
 }
 
@@ -763,12 +765,14 @@
   margin-bottom: 12px;
   flex-shrink: 0;
   align-items: stretch;
+  min-height: 108px;
 }
 
 @media (max-height: 700px) {
   .dashboard-stats {
     gap: 8px;
     margin-bottom: 8px;
+    min-height: 92px;
   }
 }
 
@@ -786,7 +790,7 @@
 
 .dashboard-stat-card {
   flex: 1;
-  padding: 12px;
+  padding: 10px 12px;
   border-radius: 12px;
   background: rgba(31, 120, 209, 0.06);
   border: 1px solid rgba(31, 120, 209, 0.12);
@@ -798,22 +802,22 @@
 
 @media (max-height: 700px) {
   .dashboard-stat-card {
-    padding: 8px;
+    padding: 8px 10px;
   }
   .dashboard-stat-card .stat-value {
-    font-size: 1.2rem;
+    font-size: 1.05rem;
   }
 }
 
 .dashboard-stat-card .stat-value {
-  font-size: 1.5rem;
+  font-size: 1.28rem;
   font-weight: 800;
   color: #1f78d1;
   font-variant-numeric: tabular-nums;
 }
 
 .dashboard-stat-card .stat-label {
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   color: #4e7399;
   margin-top: 2px;
 }
