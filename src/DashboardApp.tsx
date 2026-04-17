@@ -272,7 +272,7 @@ const LotterySection = memo(function LotterySection({
                     <span className="lottery-item-index">{String(index + 1).padStart(2, "0")}</span>
                     <span className="lottery-item-id">
                       {isCurrent ? (
-                        <ScrambleNumber targetText={winner.padStart(3, "0")} duration={1000} />
+                        <ScrambleNumber targetText={winner.padStart(3, "0")} duration={2000} />
                       ) : (
                         winner.padStart(3, "0")
                       )}
