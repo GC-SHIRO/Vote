@@ -700,16 +700,16 @@
   align-items: center;
   justify-content: center;
   min-width: 0;
-  min-height: 108px;
-  max-height: 124px;
-  padding: 8px 10px;
+  min-height: 0;
+  max-height: none;
+  padding: 0;
   overflow: hidden;
-  flex: 1;
+  flex: 0 0 96px;
 }
 
 .dashboard-pie-chart-wrap {
   position: relative;
-  width: min(100%, 88px);
+  width: 78px;
   aspect-ratio: 1 / 1;
   flex-shrink: 0;
 }
@@ -754,7 +754,7 @@
   align-items: center;
   justify-content: center;
   color: #4e7399;
-  font-size: 0.86rem;
+  font-size: 0.72rem;
   width: 100%;
 }
 
@@ -782,9 +782,12 @@
     gap: 8px;
   }
 
-  .dashboard-stat-card,
-  .dashboard-pie-stat-card {
+  .dashboard-stat-card {
     flex: 1 1 calc(50% - 4px);
+  }
+
+  .dashboard-pie-stat-card {
+    flex: 0 0 78px;
   }
 }
 

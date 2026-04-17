@@ -127,7 +127,7 @@ const VotePieChart = memo(function VotePieChart({
   let currentAngle = 0;
 
   return (
-    <div className="dashboard-stat-card dashboard-pie-stat-card" aria-label="票数占比">
+    <div className="dashboard-pie-stat-card" aria-label="票数占比">
       {totalVotes > 0 && pieData.length > 0 ? (
         <div className="dashboard-pie-chart-wrap" role="img" aria-label="候选人票数占比饼图">
           <svg viewBox="0 0 240 240" className="dashboard-pie-chart" aria-hidden="true">
