@@ -109,11 +109,6 @@ const VotePieChart = memo(function VotePieChart({
   candidates: RankedCandidate[];
   totalVotes: number;
 }) {
-  const activeCandidates = useMemo(
-    () => candidates.filter((candidate) => candidate.voteCount > 0),
-    [candidates]
-  );
-
   const pieData = useMemo(() => {
     const top = candidates.slice(0, 5).map((candidate) => ({
       id: candidate.id,
@@ -129,101 +124,45 @@ const VotePieChart = memo(function VotePieChart({
     return top.filter((item) => item.value > 0);
   }, [candidates]);
 
-  const leadingCandidate = candidates[0] ?? null;
-  const averageVotes = activeCandidates.length > 0 ? totalVotes / activeCandidates.length : 0;
-  const concentrationRatio = totalVotes > 0 && pieData.length > 0 ? (pieData[0]?.value ?? 0) / totalVotes : 0;
-
   let currentAngle = 0;
 
   return (
-    <div className="dashboard-pie-panel" aria-label="票数占比">
-      <div className="dashboard-pie-left">
-        <div className="dashboard-pie-heading">
-          <h3 className="dashboard-pie-title">票数占比</h3>
-          <span className="dashboard-pie-subtitle">前五名与其他选手的得票结构</span>
-        </div>
-        {totalVotes > 0 && pieData.length > 0 && (
-          <div className="dashboard-pie-chart-wrap" role="img" aria-label="候选人票数占比饼图">
-            <svg viewBox="0 0 240 240" className="dashboard-pie-chart" aria-hidden="true">
-              <circle cx="120" cy="120" r="94" className="dashboard-pie-base" />
-              {pieData.map((item, index) => {
-                const sweep = (item.value / totalVotes) * 360;
-                const startAngle = currentAngle;
-                const endAngle = currentAngle + sweep;
-                currentAngle = endAngle;
+    <div className="dashboard-stat-card dashboard-pie-stat-card" aria-label="票数占比">
+      {totalVotes > 0 && pieData.length > 0 ? (
+        <div className="dashboard-pie-chart-wrap" role="img" aria-label="候选人票数占比饼图">
+          <svg viewBox="0 0 240 240" className="dashboard-pie-chart" aria-hidden="true">
+            <circle cx="120" cy="120" r="94" className="dashboard-pie-base" />
+            {pieData.map((item, index) => {
+              const sweep = (item.value / totalVotes) * 360;
+              const startAngle = currentAngle;
+              const endAngle = currentAngle + sweep;
+              currentAngle = endAngle;
 
-                if (sweep >= 359.99) {
-                  return (
-                    <circle
-                      key={item.id}
-                      cx="120"
-                      cy="120"
-                      r="94"
-                      fill={PIE_COLORS[index % PIE_COLORS.length]}
-                    />
-                  );
-                }
-
+              if (sweep >= 359.99) {
                 return (
-                  <path
+                  <circle
                     key={item.id}
-                    d={getPieSlicePath(120, 120, 94, startAngle, endAngle)}
+                    cx="120"
+                    cy="120"
+                    r="94"
                     fill={PIE_COLORS[index % PIE_COLORS.length]}
                   />
                 );
-              })}
-              <circle cx="120" cy="120" r="54" fill="#ffffff" filter="drop-shadow(0 2px 4px rgba(0,0,0,0.05))" />
-            </svg>
-              <div className="dashboard-pie-center">
-                <strong>{totalVotes}</strong>
-                <span>总票数</span>
-              </div>
-            </div>
-        )}
-      </div>
+              }
 
-      {totalVotes > 0 && pieData.length > 0 ? (
-        <div className="dashboard-pie-side">
-          <div className="dashboard-pie-summary-grid">
-            <div className="dashboard-pie-summary-card dashboard-pie-summary-lead">
-              <span className="dashboard-pie-summary-label">领跑选手</span>
-              <strong className="dashboard-pie-summary-value" title={leadingCandidate?.name ?? "--"}>
-                {leadingCandidate?.name ?? "--"}
-              </strong>
-              <span className="dashboard-pie-summary-meta">
-                {leadingCandidate ? `${leadingCandidate.voteCount} 票` : "暂无数据"}
-              </span>
-            </div>
-            <div className="dashboard-pie-summary-card">
-              <span className="dashboard-pie-summary-label">人均得票</span>
-              <strong className="dashboard-pie-summary-value">{averageVotes.toFixed(1)}</strong>
-              <span className="dashboard-pie-summary-meta">仅统计已得票选手</span>
-            </div>
-            <div className="dashboard-pie-summary-card">
-              <span className="dashboard-pie-summary-label">头部集中度</span>
-              <strong className="dashboard-pie-summary-value">{(concentrationRatio * 100).toFixed(1)}%</strong>
-              <span className="dashboard-pie-summary-meta">当前第一名占比</span>
-            </div>
-          </div>
-
-          <div className="dashboard-pie-legend">
-            {pieData.map((item, index) => {
-              const percent = (item.value / totalVotes) * 100;
               return (
-                <div key={item.id} className="dashboard-pie-legend-row">
-                  <span
-                    className="dashboard-pie-dot"
-                    style={{ backgroundColor: PIE_COLORS[index % PIE_COLORS.length] }}
-                    aria-hidden="true"
-                  />
-                  <div className="dashboard-pie-legend-main">
-                    <span className="dashboard-pie-name" title={item.name}>{item.name}</span>
-                    <span className="dashboard-pie-votes">{item.value} 票</span>
-                  </div>
-                  <span className="dashboard-pie-percent">{percent.toFixed(1)}%</span>
-                </div>
+                <path
+                  key={item.id}
+                  d={getPieSlicePath(120, 120, 94, startAngle, endAngle)}
+                  fill={PIE_COLORS[index % PIE_COLORS.length]}
+                />
               );
             })}
+            <circle cx="120" cy="120" r="54" fill="#ffffff" filter="drop-shadow(0 2px 4px rgba(0,0,0,0.05))" />
+          </svg>
+          <div className="dashboard-pie-center">
+            <strong>{totalVotes}</strong>
+            <span>票数占比</span>
           </div>
         </div>
       ) : (
@@ -396,10 +335,10 @@ const DashboardApp = () => {
               <div className="stat-value">{candidates[0]?.name ?? "--"}</div>
               <div className="stat-label">当前领先</div>
             </div>
+            <VotePieChart candidates={candidates} totalVotes={totalVotes} />
           </div>
           <div className="dashboard-visuals">
             <BarChart candidates={candidates} maxVotes={maxVotes} />
-            <VotePieChart candidates={candidates} totalVotes={totalVotes} />
           </div>
         </section>
       </div>
