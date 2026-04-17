@@ -130,6 +130,16 @@ const createVoteId = () => {
   return `vote_${Date.now()}_${randomPart}`;
 };
 
+const clearVoteCache = async (eventId) => {
+  if (!isRedisReady()) return;
+  try {
+    await redis.del(`vote:result:${eventId}`);
+    await redis.del(`vote:config:response:${eventId}`);
+  } catch {
+    // no-op
+  }
+};
+
 const getClientIp = (request) => {
   const forwardedFor = request.headers["x-forwarded-for"];
   if (typeof forwardedFor === "string" && forwardedFor.trim() !== "") {
@@ -326,6 +336,20 @@ app.get("/healthz", async (_request, response) => {
 app.get("/api/v1/events/config", async (request, response) => {
   try {
     const eventId = resolveEventCode(request.query.eventId);
+    const cacheKey = `vote:config:response:${eventId}`;
+
+    if (isRedisReady()) {
+      try {
+        const cached = await redis.get(cacheKey);
+        if (cached) {
+          response.set("X-Cache", "HIT");
+          response.json(JSON.parse(cached));
+          return;
+        }
+      } catch (error) {
+        console.warn("[Config] Redis 缓存读取失败：", error.message);
+      }
+    }
 
     const event = await getEventByCode(eventId);
     if (!event) {
@@ -341,7 +365,7 @@ app.get("/api/v1/events/config", async (request, response) => {
     const candidates = await getEventCandidatesForPublic(event.id, Boolean(event.result_visible));
     const displayedWinners = await getDisplayedLotteryWinners(event.id);
 
-    response.json({
+    const payload = {
       success: true,
       data: {
         eventId: event.event_code,
@@ -363,7 +387,17 @@ app.get("/api/v1/events/config", async (request, response) => {
         useReservedIds: rule.useReservedIds || false,
         candidates
       }
-    });
+    };
+
+    if (isRedisReady()) {
+      try {
+        await redis.set(cacheKey, JSON.stringify(payload), "EX", 30);
+      } catch (error) {
+        console.warn("[Config] Redis 缓存写入失败：", error.message);
+      }
+    }
+
+    response.json(payload);
   } catch (error) {
     console.error("[Config] 获取配置失败", error);
     response.status(500).json({ success: false, message: "服务端异常" });
@@ -520,13 +554,7 @@ app.post("/api/v1/votes", async (request, response) => {
       return createdIds;
     });
 
-    if (isRedisReady()) {
-      try {
-        await redis.del(`vote:result:${resolvedEventId}`);
-      } catch (error) {
-        console.warn("[Vote] Redis 缓存清理失败：", error.message);
-      }
-    }
+    await clearVoteCache(resolvedEventId);
 
     const totalVotes = await getTotalVotes(event.id);
 
@@ -770,13 +798,7 @@ app.put("/api/v1/admin/config", requireAdminAuth, async (request, response) => {
       ]
     );
 
-    if (isRedisReady()) {
-      try {
-        await redis.del(`vote:result:${resolvedEventId}`);
-      } catch {
-        // no-op
-      }
-    }
+    await clearVoteCache(resolvedEventId);
 
     response.json({ success: true, message: "配置已更新" });
   } catch (error) {
@@ -840,13 +862,7 @@ app.post("/api/v1/admin/candidates", requireAdminAuth, async (request, response)
     ]
   );
 
-  if (isRedisReady()) {
-    try {
-      await redis.del(`vote:result:${resolvedEventId}`);
-    } catch {
-      // no-op
-    }
-  }
+  await clearVoteCache(resolvedEventId);
 
   response.json({
     success: true,
@@ -915,13 +931,7 @@ app.put("/api/v1/admin/candidates/:candidateCode", requireAdminAuth, async (requ
     ]
   );
 
-  if (isRedisReady()) {
-    try {
-      await redis.del(`vote:result:${resolvedEventId}`);
-    } catch {
-      // no-op
-    }
-  }
+  await clearVoteCache(resolvedEventId);
 
   response.json({ success: true, message: "候选人已更新" });
   } catch (error) {
@@ -950,13 +960,7 @@ app.delete("/api/v1/admin/candidates/:candidateCode", requireAdminAuth, async (r
     [event.id, candidateCode]
   );
 
-  if (isRedisReady()) {
-    try {
-      await redis.del(`vote:result:${eventId}`);
-    } catch {
-      // no-op
-    }
-  }
+  await clearVoteCache(eventId);
 
   response.json({ success: true, message: "候选人已删除" });
   } catch (error) {
@@ -1066,13 +1070,7 @@ app.post("/api/v1/admin/lottery/draw", requireAdminAuth, async (request, respons
       );
     }
 
-    if (isRedisReady()) {
-      try {
-        await redis.del(`vote:result:${eventId}`);
-      } catch {
-        // no-op
-      }
-    }
+    await clearVoteCache(eventId);
 
     response.json({ 
       success: true, 
@@ -1119,13 +1117,7 @@ app.post("/api/v1/admin/lottery/reset", requireAdminAuth, async (request, respon
       );
     }
 
-    if (isRedisReady()) {
-      try {
-        await redis.del(`vote:result:${eventId}`);
-      } catch {
-        // no-op
-      }
-    }
+    await clearVoteCache(eventId);
 
     const message = resetType === 'all' ? "抽奖数据已完全重置" : "前台已恢复为等待抽奖状态";
     response.json({ success: true, message });
@@ -1153,13 +1145,7 @@ app.post("/api/v1/admin/votes/clear", requireAdminAuth, async (request, response
     const deletedCount = result?.affectedRows || 0;
 
     // 清除 Redis 缓存
-    if (isRedisReady()) {
-      try {
-        await redis.del(`vote:result:${eventId}`);
-      } catch {
-        // no-op
-      }
-    }
+    await clearVoteCache(eventId);
 
     console.log(`[Admin] 已清空活动 ${eventId} 的所有投票，共 ${deletedCount} 条记录`);
     response.json({ 

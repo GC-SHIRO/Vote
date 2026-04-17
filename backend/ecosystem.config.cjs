@@ -4,8 +4,8 @@ module.exports = {
       name: "vote-api",
       script: "src/server.js",
       cwd: "/srv/vote/api/current",
-      instances: 1,
-      exec_mode: "fork",
+      instances: "max",
+      exec_mode: "cluster",
       env: {
         NODE_ENV: "production"
       },
