@@ -1160,7 +1160,7 @@ app.post("/api/v1/admin/votes/clear", requireAdminAuth, async (request, response
     }
 
     // 删除该活动的所有投票记录
-    const [result] = await query(
+    const result = await query(
       `DELETE FROM vote_record WHERE event_id = ?`,
       [event.id]
     );
@@ -1177,7 +1177,7 @@ app.post("/api/v1/admin/votes/clear", requireAdminAuth, async (request, response
       deletedCount
     });
   } catch (error) {
-    console.error("[Admin] 清空投票失败", error);
+    console.error("[Admin] 清空投票失败", error.stack || error);
     response.status(500).json({ success: false, message: "清空投票失败，系统异常" });
   }
 });
