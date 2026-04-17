@@ -75,103 +75,6 @@ const BarChart = memo(function BarChart({
   );
 });
 
-function getPieSlicePath(
-  cx: number,
-  cy: number,
-  radius: number,
-  startAngleDeg: number,
-  endAngleDeg: number
-): string {
-  const start = (Math.PI / 180) * (startAngleDeg - 90);
-  const end = (Math.PI / 180) * (endAngleDeg - 90);
-
-  const x1 = cx + radius * Math.cos(start);
-  const y1 = cy + radius * Math.sin(start);
-  const x2 = cx + radius * Math.cos(end);
-  const y2 = cy + radius * Math.sin(end);
-
-  const largeArcFlag = endAngleDeg - startAngleDeg > 180 ? 1 : 0;
-
-  return [
-    `M ${cx} ${cy}`,
-    `L ${x1} ${y1}`,
-    `A ${radius} ${radius} 0 ${largeArcFlag} 1 ${x2} ${y2}`,
-    "Z"
-  ].join(" ");
-}
-
-const PIE_COLORS = ["#1c56b4", "#2f80ed", "#5aabe8", "#82c8f7", "#a8daf9", "#d6efff"];
-
-const VotePieChart = memo(function VotePieChart({
-  candidates,
-  totalVotes
-}: {
-  candidates: RankedCandidate[];
-  totalVotes: number;
-}) {
-  const pieData = useMemo(() => {
-    const top = candidates.slice(0, 5).map((candidate) => ({
-      id: candidate.id,
-      name: candidate.name,
-      value: candidate.voteCount
-    }));
-    const otherVotes = candidates.slice(5).reduce((sum, candidate) => sum + candidate.voteCount, 0);
-
-    if (otherVotes > 0) {
-      top.push({ id: "others", name: "其他", value: otherVotes });
-    }
-
-    return top.filter((item) => item.value > 0);
-  }, [candidates]);
-
-  let currentAngle = 0;
-
-  return (
-    <div className="dashboard-pie-stat-card" aria-label="票数占比">
-      {totalVotes > 0 && pieData.length > 0 ? (
-        <div className="dashboard-pie-chart-wrap" role="img" aria-label="候选人票数占比饼图">
-          <svg viewBox="0 0 240 240" className="dashboard-pie-chart" aria-hidden="true">
-            <circle cx="120" cy="120" r="94" className="dashboard-pie-base" />
-            {pieData.map((item, index) => {
-              const sweep = (item.value / totalVotes) * 360;
-              const startAngle = currentAngle;
-              const endAngle = currentAngle + sweep;
-              currentAngle = endAngle;
-
-              if (sweep >= 359.99) {
-                return (
-                  <circle
-                    key={item.id}
-                    cx="120"
-                    cy="120"
-                    r="94"
-                    fill={PIE_COLORS[index % PIE_COLORS.length]}
-                  />
-                );
-              }
-
-              return (
-                <path
-                  key={item.id}
-                  d={getPieSlicePath(120, 120, 94, startAngle, endAngle)}
-                  fill={PIE_COLORS[index % PIE_COLORS.length]}
-                />
-              );
-            })}
-            <circle cx="120" cy="120" r="54" fill="#ffffff" filter="drop-shadow(0 2px 4px rgba(0,0,0,0.05))" />
-          </svg>
-          <div className="dashboard-pie-center">
-            <strong>{totalVotes}</strong>
-            <span>票数占比</span>
-          </div>
-        </div>
-      ) : (
-        <div className="dashboard-pie-empty">暂无数据</div>
-      )}
-    </div>
-  );
-});
-
 function hasDataChanged(
   prev: RankedCandidate[],
   next: Array<{ id: string; voteCount: number }>
@@ -335,7 +238,6 @@ const DashboardApp = () => {
               <div className="stat-value">{candidates[0]?.name ?? "--"}</div>
               <div className="stat-label">当前领先</div>
             </div>
-            <VotePieChart candidates={candidates} totalVotes={totalVotes} />
           </div>
           <div className="dashboard-visuals">
             <BarChart candidates={candidates} maxVotes={maxVotes} />
