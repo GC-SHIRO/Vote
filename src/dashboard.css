@@ -730,6 +730,11 @@
   border-radius: 12px;
   background: rgba(31, 120, 209, 0.06);
   border: 1px solid rgba(31, 120, 209, 0.12);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
   text-align: center;
   transition: background 0.2s ease, border-color 0.2s ease;
 }
@@ -750,12 +755,15 @@
   font-weight: 800;
   color: #1f78d1;
   font-variant-numeric: tabular-nums;
+  margin: 0;
+  line-height: 1.1;
 }
 
 .dashboard-stat-card .stat-label {
   font-size: 0.72rem;
   color: #4e7399;
-  margin-top: 2px;
+  margin: 0;
+  line-height: 1.2;
 }
 
 /* Animations */
