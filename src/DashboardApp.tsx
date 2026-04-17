@@ -8,6 +8,7 @@ import type { RankedCandidate } from "./types";
 const FAST_POLL_MS = 2000;
 const SLOW_POLL_MS = 5000;
 const LOTTERY_REVEAL_MS = 2000;
+const LOTTERY_SCRAMBLE_STEP_MS = 90;
 
 const RankCard = memo(function RankCard({ candidate }: { candidate: RankedCandidate }) {
   const animClass = candidate.rankChanged
@@ -201,6 +202,8 @@ function ScrambleNumber({ targetText, duration = 1000 }: { targetText: string, d
 
   useEffect(() => {
     setIsScrambling(true);
+    setDisplayText(String(Math.floor(Math.random() * 800) + 1).padStart(3, "0"));
+
     const stopTimer = setTimeout(() => {
       setIsScrambling(false);
       setDisplayText(targetText);
@@ -215,7 +218,7 @@ function ScrambleNumber({ targetText, duration = 1000 }: { targetText: string, d
     const intervalId = setInterval(() => {
       const randomNum = Math.floor(Math.random() * 800) + 1;
       setDisplayText(String(randomNum).padStart(3, "0"));
-    }, 50); // Scramble every 50ms
+    }, LOTTERY_SCRAMBLE_STEP_MS);
 
     return () => clearInterval(intervalId);
   }, [isScrambling]);
@@ -483,8 +486,8 @@ const DashboardApp = () => {
   useEffect(() => {
     const node = lotteryScrollRef.current;
     if (!node) return;
-    node.scrollTo({ top: node.scrollHeight, behavior: currentScrollWinner ? "smooth" : "auto" });
-  }, [lotteryDisplayList.length, currentScrollWinner]);
+    node.scrollTo({ top: node.scrollHeight, behavior: "auto" });
+  }, [lotteryDisplayList.length]);
 
   return (
     <main className="dashboard-page">
