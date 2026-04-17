@@ -1,4 +1,5 @@
 import { memo, useEffect, useMemo, useRef, useState } from "react";
+import type { CSSProperties } from "react";
 import { fetchEventConfig, RUNTIME_EVENT_ID } from "./api";
 import { defaultVoteSettings } from "./data";
 import type { RankedCandidate } from "./types";
@@ -51,10 +52,21 @@ const BarChart = memo(function BarChart({
   candidates: RankedCandidate[];
   maxVotes: number;
 }) {
+  const candidateCount = candidates.length;
+
   return (
     <div className="dashboard-bar-chart" role="img" aria-label="投票数据柱状图">
       {candidates.map((c) => {
         const pct = maxVotes > 0 ? (c.voteCount / maxVotes) * 100 : 0;
+        const scaledPct = Math.pow(pct / 100, 1.75) * 100;
+        const rankRatio = candidateCount > 1 ? (c.rank - 1) / (candidateCount - 1) : 0;
+        const barStyle = {
+          height: `${Math.max(scaledPct, 1.2)}%`,
+          "--bar-saturation": `${68 - rankRatio * 18}%`,
+          "--bar-lightness-top": `${69 + rankRatio * 6}%`,
+          "--bar-lightness-bottom": `${58 + rankRatio * 9}%`
+        } as CSSProperties;
+
         return (
           <div key={c.id} className="dashboard-bar-wrapper">
             <div className="dashboard-bar-head">
@@ -62,10 +74,7 @@ const BarChart = memo(function BarChart({
               <span className="dashboard-bar-value">{c.voteCount}</span>
             </div>
             <div className="dashboard-bar-track" aria-hidden="true">
-              <div
-                className="dashboard-bar"
-                style={{ height: `${Math.max(pct, 2)}%` }}
-              />
+              <div className="dashboard-bar" style={barStyle} />
             </div>
             <div className="dashboard-bar-label" title={c.name}>{c.name}</div>
           </div>

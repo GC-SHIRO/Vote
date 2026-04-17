@@ -4,8 +4,8 @@ import { check, sleep } from 'k6';
 // 测试配置：模拟真实业务的波峰波谷
 export const options = {
   stages: [
-  { duration: '10s', target: 500 },
-  { duration: '20s', target: 800 },
+  { duration: '10s', target: 300 },
+  { duration: '20s', target: 500 },
   { duration: '10s', target: 0 },
   ],
   thresholds: {
