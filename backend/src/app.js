@@ -5,7 +5,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import multer from "multer";
 import { config } from "./config.js";
-import { query, withTransaction } from "./db.js";
+import { query, withTransaction, pool } from "./db.js";
 import { isRedisReady, redis } from "./redis.js";
 
 const app = express();
@@ -914,13 +914,18 @@ app.put("/api/v1/admin/candidates/:candidateCode", requireAdminAuth, async (requ
   }
   const current = currentRows[0];
 
-  const nextName = typeof name === "string" ? name.trim() : current.candidate_name;
+  const nextName = typeof name === "string" ? name.trim() || current.candidate_name : current.candidate_name;
   const nextAcademy = typeof academy === "string" ? academy.trim() || null : current.academy;
   const nextMajor = typeof major === "string" ? major.trim() || null : current.major_name;
   const nextSong = typeof song === "string" ? song.trim() || null : current.song_name;
   const nextAvatar = typeof avatarUrl === "string" ? avatarUrl.trim() || null : current.avatar_url;
-  const nextDisplayOrder = Number.isFinite(Number(displayOrder)) ? Number(displayOrder) : current.display_order;
-  const nextStatus = typeof status === "string" ? (status === "inactive" ? "inactive" : "active") : current.status;
+  const nextDisplayOrder = Number.isFinite(Number(displayOrder)) ? Number(displayOrder) : (current.display_order ?? 0);
+  const nextStatus =
+    typeof status === "string"
+      ? status === "inactive"
+        ? "inactive"
+        : "active"
+      : current.status ?? "active";
 
   await query(
     `
@@ -953,7 +958,7 @@ app.put("/api/v1/admin/candidates/:candidateCode", requireAdminAuth, async (requ
 
   response.json({ success: true, message: "候选人已更新" });
   } catch (error) {
-    console.error("[Admin] 更新候选人失败", error);
+    console.error("[Admin] 更新候选人失败", error.stack || error);
     response.status(500).json({ success: false, message: "服务端异常" });
   }
 });
