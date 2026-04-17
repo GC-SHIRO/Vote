@@ -4,10 +4,9 @@ import { check, sleep } from 'k6';
 // 测试配置：模拟真实业务的波峰波谷
 export const options = {
   stages: [
-    { duration: '30s', target: 200 },  // 预热：30秒内用户量爬升到 200
-    { duration: '1m', target: 500 },  // 爆发：1分钟内用户暴增至 500（模拟活动推送瞬间）
-    { duration: '2m', target: 500 },  // 持续：维持 500 并发稳定持续 2 分钟
-    { duration: '30s', target: 0 },    // 冷却：活动热度退潮，30秒内降至 0
+  { duration: '10s', target: 1000 },
+  { duration: '20s', target: 1000 },
+  { duration: '10s', target: 0 },
   ],
   thresholds: {
     // 产品级 SLA 要求：

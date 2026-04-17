@@ -1,4 +1,4 @@
-import { query } from "./db.js";
+import { query, pool } from "./db.js";
 import { config } from "./config.js";
 
 const schemaStatements = [
@@ -88,102 +88,92 @@ const ensureUniqueIndex = async (tableName, indexName, columns) => {
 const seedCandidates = [
   {
     candidateCode: "singer-01",
-    candidateName: "胡宇佳",
+    candidateName: "吕梦绮",
     academy: "音乐学院",
-    majorName: "音乐表演",
-    songName: "待定",
-    avatarUrl:
-      "https://i.imgs.ovh/2026/04/10/Zo4Nre.png",
+    majorName: "25音乐表演",
+    songName: "Speechless",
+    avatarUrl: "https://img.cdn1.vip/i/69df4b3aecfdf_1776241466.webp",
     displayOrder: 1
   },
   {
     candidateCode: "singer-02",
-    candidateName: "吕梦绮",
-    academy: "音乐学院",
-    majorName: "音乐表演",
-    songName: "待定",
-    avatarUrl:
-      "https://i.imgs.ovh/2026/04/10/Zo4Nre.png",
+    candidateName: "陈汝子良 安嘉铭扬",
+    academy: "外国语、药学院",
+    majorName: "陈：22商务英语。安：24口腔医学",
+    songName: "just two of us",
+    avatarUrl: "https://img.cdn1.vip/i/69df4de485914_1776242148.webp",
     displayOrder: 2
   },
   {
     candidateCode: "singer-03",
-    candidateName: "陈汝子良 安佳铭扬",
-    academy: "外国语学院 药学院",
-    majorName: "英语",
-    songName: "待定",
-    avatarUrl:
-      "https://i.imgs.ovh/2026/04/10/Zo4Nre.png",
+    candidateName: "胡宇佳",
+    academy: "音乐学院",
+    majorName: "24音乐表演",
+    songName: "爱我的人",
+    avatarUrl: "https://img.cdn1.vip/i/69df4b370a8e4_1776241463.webp",
     displayOrder: 3
   },
   {
     candidateCode: "singer-04",
     candidateName: "钟小亮",
     academy: "工程物理学院",
-    majorName: "智能感知",
-    songName: "待定",
-    avatarUrl:
-      "https://i.imgs.ovh/2026/04/10/Zo4Nre.png",
+    majorName: "22光电",
+    songName: "悟空",
+    avatarUrl: "https://img.cdn1.vip/i/69df4b3a2b209_1776241466.webp",
     displayOrder: 4
   },
   {
     candidateCode: "singer-05",
     candidateName: "于文庆",
     academy: "新材料与新能源学院",
-    majorName: "材料科学与工程",
-    songName: "待定",
-    avatarUrl:
-      "https://i.imgs.ovh/2026/04/10/Zo4Nre.png",
+    majorName: "23光源与照明",
+    songName: "半生出走",
+    avatarUrl: "https://img.cdn1.vip/i/69df4b393645c_1776241465.webp",
     displayOrder: 5
   },
   {
     candidateCode: "singer-06",
     candidateName: "余一言",
     academy: "音乐学院",
-    majorName: "音乐表演",
-    songName: "待定",
-    avatarUrl:
-      "https://i.imgs.ovh/2026/04/10/Zo4Nre.png",
+    majorName: "24音乐表演",
+    songName: "喜欢你",
+    avatarUrl: "https://img.cdn1.vip/i/69df4b488a97e_1776241480.webp",
     displayOrder: 6
   },
   {
     candidateCode: "singer-07",
     candidateName: "王小涵",
     academy: "健康与环境工程学院",
-    majorName: "环境科学与工程",
-    songName: "待定",
-    avatarUrl:
-      "https://i.imgs.ovh/2026/04/10/Zo4Nre.png",
+    majorName: "24生物医学工程",
+    songName: "如此",
+    avatarUrl: "https://img.cdn1.vip/i/69df4b368cb0e_1776241462.webp",
     displayOrder: 7
   },
   {
     candidateCode: "singer-08",
     candidateName: "麦宝宁",
     academy: "中德智能制造学院",
-    majorName: "机器人工程",
-    songName: "待定",
-    avatarUrl:
-      "https://i.imgs.ovh/2026/04/10/Zo4Nre.png",
+    majorName: "23电子科学与技术",
+    songName: "想你的夜",
+    avatarUrl: "https://img.cdn1.vip/i/69df4de292880_1776242146.webp",
     displayOrder: 8
   },
   {
     candidateCode: "singer-09",
     candidateName: "吴润槟",
     academy: "音乐学院",
-    majorName: "音乐表演",
-    songName: "待定",
-    avatarUrl:
-      "https://i.imgs.ovh/2026/04/10/Zo4Nre.png",
+    majorName: "24音乐表演",
+    songName: "刻在我心底的名字",
+    avatarUrl: "https://img.cdn1.vip/i/69df4b3f5a87e_1776241471.webp",
     displayOrder: 9
   },
   {
     candidateCode: "singer-10",
     candidateName: "张晨阳",
     academy: "健康与环境工程学院",
-    majorName: "环境科学与工程",
-    songName: "待定",
-    avatarUrl:
-      "https://i.img.ovh/2026/04/10/Zo4Nre.png",
+    majorName: "25智能医学",
+    songName: "no hook freestyle pt.4",
+    avatarUrl: "https://img.cdn1.vip/i/69df4b374cccc_1776241463.webp",
     displayOrder: 10
   }
 ];
@@ -220,6 +210,13 @@ const ensureEvent = async () => {
 
 const ensureCandidates = async (eventId) => {
   for (const item of seedCandidates) {
+    const [existing] = await pool.execute(
+      `SELECT 1 FROM vote_candidate WHERE event_id = ? AND candidate_code = ? LIMIT 1`,
+      [eventId, item.candidateCode]
+    );
+    if (existing.length > 0) {
+      continue;
+    }
     await query(
       `
       INSERT INTO vote_candidate (
@@ -233,15 +230,6 @@ const ensureCandidates = async (eventId) => {
         display_order,
         status
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active')
-      ON DUPLICATE KEY UPDATE
-        candidate_name = VALUES(candidate_name),
-        academy = VALUES(academy),
-        major_name = VALUES(major_name),
-        song_name = VALUES(song_name),
-        avatar_url = VALUES(avatar_url),
-        display_order = VALUES(display_order),
-        status = 'active',
-        updated_at = CURRENT_TIMESTAMP
       `,
       [
         eventId,

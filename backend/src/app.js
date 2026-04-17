@@ -904,6 +904,24 @@ app.put("/api/v1/admin/candidates/:candidateCode", requireAdminAuth, async (requ
     return;
   }
 
+  const [currentRows] = await pool.execute(
+    `SELECT candidate_name, academy, major_name, song_name, avatar_url, display_order, status FROM vote_candidate WHERE event_id = ? AND candidate_code = ? LIMIT 1`,
+    [event.id, candidateCode]
+  );
+  if (currentRows.length === 0) {
+    response.status(404).json({ success: false, message: "候选人不存在" });
+    return;
+  }
+  const current = currentRows[0];
+
+  const nextName = typeof name === "string" ? name.trim() : current.candidate_name;
+  const nextAcademy = typeof academy === "string" ? academy.trim() || null : current.academy;
+  const nextMajor = typeof major === "string" ? major.trim() || null : current.major_name;
+  const nextSong = typeof song === "string" ? song.trim() || null : current.song_name;
+  const nextAvatar = typeof avatarUrl === "string" ? avatarUrl.trim() || null : current.avatar_url;
+  const nextDisplayOrder = Number.isFinite(Number(displayOrder)) ? Number(displayOrder) : current.display_order;
+  const nextStatus = typeof status === "string" ? (status === "inactive" ? "inactive" : "active") : current.status;
+
   await query(
     `
     UPDATE vote_candidate
@@ -919,13 +937,13 @@ app.put("/api/v1/admin/candidates/:candidateCode", requireAdminAuth, async (requ
     WHERE event_id = ? AND candidate_code = ?
     `,
     [
-      String(name ?? "").trim(),
-      academy ? String(academy).trim() : null,
-      major ? String(major).trim() : null,
-      song ? String(song).trim() : null,
-      avatarUrl ? String(avatarUrl).trim() : null,
-      Number.isFinite(Number(displayOrder)) ? Number(displayOrder) : 99,
-      status === "inactive" ? "inactive" : "active",
+      nextName,
+      nextAcademy,
+      nextMajor,
+      nextSong,
+      nextAvatar,
+      nextDisplayOrder,
+      nextStatus,
       event.id,
       candidateCode
     ]
