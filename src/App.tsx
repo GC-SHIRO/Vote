@@ -14,6 +14,17 @@ import appText from "./img/文字.png";
 const FIRST_ENTRANCE_KEY = "vote-page-first-entrance-v1";
 const APP_DEBUG_PREFIX = "[VoteDebug][App]";
 
+const isValidStudentId = (value: string) =>
+  /^202[0-5]\d{8}$/.test(value) || /^\d{5}$/.test(value) || /^\d{8}$/.test(value);
+
+const getStudentIdHintError = (value: string) => {
+  if (value.length === 12 && !/^202[0-5]/.test(value)) {
+    return "12位学号应以2020-2025开头";
+  }
+
+  return "";
+};
+
 const appLog = (...args: unknown[]) => {
   console.log(APP_DEBUG_PREFIX, ...args);
 };
@@ -301,7 +312,7 @@ const App = () => {
 
   const validateAndSubmitVote = async () => {
     const trimmed = studentIdInput.trim();
-    if (!(/^202[0-5]\d{8}$/.test(trimmed) || /^\d{5}$/.test(trimmed) || /^\d{8}$/.test(trimmed))) {
+    if (!isValidStudentId(trimmed)) {
       setStudentIdError("请输入正确的学号 (5位/8位/12位)");
       return;
     }
@@ -672,11 +683,7 @@ const App = () => {
             onChange={(e) => {
               const val = e.target.value.replace(/\D/g, '').slice(0, 12);
               setStudentIdInput(val);
-              if (val.length === 12 && !/^202[0-5]/.test(val)) {
-                setStudentIdError("12位学号应以2020-2025开头");
-              } else {
-                setStudentIdError("");
-              }
+               setStudentIdError(getStudentIdHintError(val));
             }}
             onKeyDown={(e) => {
               if (e.key === 'Enter') validateAndSubmitVote();
@@ -732,20 +739,20 @@ const App = () => {
             <button
               type="button"
               onClick={validateAndSubmitVote}
-              disabled={studentIdInput.length !== 12}
+              disabled={!isValidStudentId(studentIdInput.trim())}
               style={{
                 flex: 1,
                 padding: '14px 20px',
                 border: 'none',
                 borderRadius: '12px',
-                background: studentIdInput.length === 12 
+                background: isValidStudentId(studentIdInput.trim()) 
                   ? 'linear-gradient(125deg, #2082de 0%, #1165bb 100%)' 
                   : '#c5d8e8',
                 color: '#fff',
                 fontSize: '1rem',
                 fontWeight: 700,
-                cursor: studentIdInput.length === 12 ? 'pointer' : 'not-allowed',
-                boxShadow: studentIdInput.length === 12 
+                cursor: isValidStudentId(studentIdInput.trim()) ? 'pointer' : 'not-allowed',
+                boxShadow: isValidStudentId(studentIdInput.trim()) 
                   ? '0 4px 12px rgba(32, 130, 222, 0.4)' 
                   : 'none'
               }}
